@@ -1,0 +1,14 @@
+[package]
+name = "gutenberg-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[dependencies]
+reqwest = {version = "0.11.12", features=["stream"]}
+indicatif = "0.17.1"
+futures-util = "0.3.25"
+tokio = { version = "1.13.0", features = ["full"] }
+bzip2 = "0.4.3"
+tar = "0.4.38"
+fast-xml ="0.23.1"
