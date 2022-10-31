@@ -84,16 +84,22 @@ fn decompress_bz(path: &str) -> Result<(u64, String), std::io::Error> {
     pb.set_message(format!("Decompressing {} to {}", path, new_filename));
 
     let mut decoder = BzDecoder::new(bz_file);
-    let mut read_buffer = vec![0; 1024 * 1024];
+    let big_data_size = 1024 * 1024;
     let mut total_archive_size = 0 as u64;
     let mut output_file = File::create(new_filename).unwrap();
 
     loop {
+        let mut read_buffer = vec![0; big_data_size];
         let data_len = decoder.read(&mut read_buffer).unwrap() as u64;
-        total_archive_size += data_len as u64;
+        total_archive_size += data_len;
+        if big_data_size > data_len as usize {
+            read_buffer.resize(data_len as usize, 0);
+        }
         output_file.write(&read_buffer)?;
         pb.set_position(decoder.total_in());
-        if data_len == 0 {
+        if decoder.total_in() == bz_size {
+            decoder.flush();
+            output_file.flush();
             break;
         }
     }
@@ -123,7 +129,7 @@ fn decompress_tar(path: &str, initial_size: u64) -> Result<(), std::io::Error> {
 
 #[tokio::main]
 async fn main() {
-    //let filename = "gutenberg.tar.bz2";
+    let filename = "gutenberg.tar.bz2";
 
     //download_file(&Client::new(), "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2", "gutenberg.tar.bz2").await.unwrap();
     //let (total_archive_size, bz_filename) = decompress_bz(filename).unwrap();
