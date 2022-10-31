@@ -13,6 +13,7 @@ use crate::fst_parser_type::ParseType;
 use crate::fst_parser::FSTParser;
 use crate::book::Book;
 use crate::fst_parser::ParseResult;
+use crate::fst_parser::ParseItemResult;
 
 fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, out:&mut ParseResult) -> usize {
     println!("Doing: {}", path.display());
@@ -135,18 +136,47 @@ pub fn parse_xml(folder_path: &PathBuf) {
         let file_paths = fs::read_dir(path_value.path()).unwrap();
         for file_path in file_paths {
             let book_id = parse_rdf(&file_path.unwrap().path(), &mut field_parsers, &mut parse_result);
-            println!("BookId: {}", book_id);
-            println!("-------------------------------------------------------------");
-            let publisher_id = field_parsers[ParseType::Publisher as usize].get_result().unwrap().item_links[0]; 
-            let title_id = field_parsers[ParseType::Title as usize].get_result().unwrap().item_links[0]; 
-            let rights_id = field_parsers[ParseType::Rights as usize].get_result().unwrap().item_links[0];
-            let date_id = field_parsers[ParseType::DateIssued as usize].get_result().unwrap().item_links[0];
-            let down_id = field_parsers[ParseType::Downloads as usize].get_result().unwrap().item_links[0];
+            let publisher_id = match field_parsers[ParseType::Publisher as usize].get_result() {
+                    Ok(item) => item.item_links[0] as i32,
+                    Err(_) => -1
+            };
+            
+            let title_id = match field_parsers[ParseType::Title as usize].get_result() {
+                Ok(item) => item.item_links[0] as i32,
+                Err(_) => -1
+            };
 
-            let language_ids = field_parsers[ParseType::Language as usize].get_result().unwrap().item_links.clone();
-            let subject_ids = field_parsers[ParseType::Subject as usize].get_result().unwrap().item_links.clone();
-            let author_ids = field_parsers[ParseType::Author as usize].get_result().unwrap().item_links.clone();
-            let bookshelf_ids = field_parsers[ParseType::Bookshelf as usize].get_result().unwrap().item_links.clone();
+            let rights_id = match field_parsers[ParseType::Rights as usize].get_result() {
+                Ok(item) => item.item_links[0] as i32,
+                Err(_) => -1
+            };
+
+            let date_id = match field_parsers[ParseType::DateIssued as usize].get_result() {
+                Ok(item) => item.item_links[0] as i32,
+                Err(_) => -1
+            };
+
+            let down_id = match field_parsers[ParseType::Downloads as usize].get_result() {
+                Ok(item) => item.item_links[0] as i32,
+                Err(_) => -1
+            };
+
+            let language_ids = field_parsers[ParseType::Language as usize].get_result()
+            .unwrap_or(&ParseItemResult{item_links: Vec::new()})
+            .item_links.clone();
+            
+            let subject_ids = field_parsers[ParseType::Subject as usize].get_result()
+            .unwrap_or(&ParseItemResult{item_links: Vec::new()})
+            .item_links.clone();
+            
+            let author_ids = field_parsers[ParseType::Author as usize].get_result()
+            .unwrap_or(&ParseItemResult{item_links: Vec::new()})
+            .item_links.clone();
+            
+            let bookshelf_ids = field_parsers[ParseType::Bookshelf as usize].get_result()
+            .unwrap_or(&ParseItemResult{item_links: Vec::new()})
+            .item_links.clone();
+            
             parse_result.books.push(Book {
                 publisher_id,
                 title_id,

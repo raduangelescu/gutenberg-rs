@@ -2,9 +2,9 @@ use crate::fst_parser::ParseResult;
 use crate::fst_parser_type::ParseType;
 
 pub struct Book {
-    pub publisher_id : usize,
-    pub title_id : usize,
-    pub rights_id : usize,
+    pub publisher_id : i32,
+    pub title_id : i32,
+    pub rights_id : i32,
     pub gutenberg_book_id : usize,
     pub date_issued : String,
     pub num_downloads : i32,
@@ -21,11 +21,14 @@ impl Book {
         .iter()
         .map(|x|  parse_result.data[parse_type as usize][*x].clone())
         .collect::<Vec<_>>()
-        .join("||")
+        .join("|")
     }
 
-    fn get_str_single(id: usize, parse_type: ParseType, parse_result: &ParseResult) -> String {
-        parse_result.data[parse_type as usize][id].clone()
+    fn get_str_single(id: i32, parse_type: ParseType, parse_result: &ParseResult) -> String {
+        if id >= 0 {
+            return parse_result.data[parse_type as usize][id as usize].clone();
+        }
+        "".to_string()
     }
 
     pub fn debug(&self, parse_result:&ParseResult) {
