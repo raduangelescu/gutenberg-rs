@@ -82,7 +82,7 @@ fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, out:&m
     return book_id;
 }
 
-pub fn parse_xml(folder_path: &PathBuf) {
+pub fn parse_xml(folder_path: &PathBuf) -> ParseResult {
     let paths = fs::read_dir(folder_path).unwrap();
     let mut parse_result : ParseResult = ParseResult {
         books : Vec::new(),
@@ -198,4 +198,5 @@ pub fn parse_xml(folder_path: &PathBuf) {
             book.debug(&parse_result);
         }
     }
+    parse_result
 }

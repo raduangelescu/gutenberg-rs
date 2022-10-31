@@ -1,6 +1,8 @@
 use std::fmt;
+use num_derive::FromPrimitive;    
+use num_traits::FromPrimitive;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, FromPrimitive)]
 pub enum ParseType {
     Title = 0,
     Subject,

@@ -1,17 +1,18 @@
-
-use std::ptr::null;
-
 use crate::db_cache::DBCache;
 use crate::fst_parser_type::ParseType;
-use sqlite::{Connection, Cursor};
-use tokio::fs::File;
+use crate::fst_parser::ParseResult;
+use num_derive::FromPrimitive;    
+use num_traits::FromPrimitive;
 
-struct SQLiteCache {
+use rusqlite::{Connection};
+use std::fmt;
+
+pub struct SQLiteCache {
     table_map : Vec<String>,
-   
     sqlite_db_create_cache_filename : String,
     sqlite_db_create_indices_filename : String,
 }
+
 impl Default for SQLiteCache {
     fn default() -> SQLiteCache {
     
@@ -31,13 +32,28 @@ impl Default for SQLiteCache {
 }
 
 impl DBCache for SQLiteCache {
-    fn create_cache(&mut self, parse_results: &Vec<String>) { 
-        //let mut connection = sqlite::open(self.sqlite_db_create_cache_filename).unwrap();
-        //let create_query = std::fs::read_to_string(self.sqlite_db_create_cache_filename).unwrap();
-        //connection.execute(create_query).unwrap();
+    fn create_cache(&mut self, parse_results: &ParseResult) { 
+        let mut connection = Connection::open(&self.sqlite_db_create_cache_filename).unwrap();
+        let create_query = std::fs::read_to_string(&self.sqlite_db_create_cache_filename).unwrap();
+        connection.execute_batch(create_query.as_str()).unwrap();
         
-        /*for (idx,  result) in parse_results.iter().enumerate() {
-            if idx == ParseType::File as usize {
+        for (idx,  result) in parse_results.data.iter().enumerate() {
+            match FromPrimitive::from_usize(idx) {
+                Some(ParseType::Title) => {
+                    println!("{}", idx);
+                }
+                Some(ParseType::Subject) => {},
+                Some(ParseType::Language) => {},
+                Some(ParseType::Author) => {},
+                Some(ParseType::Bookshelf) => {},
+                Some(ParseType::Files) => {},
+                Some(ParseType::Publisher) => {},
+                Some(ParseType::Rights) => {},
+                Some(ParseType::DateIssued) => {},
+                Some(ParseType::Downloads) => {},
+                None => {},
+            }
+            /*if idx == ParseType::File as usize {
                 self.insert_many_fields(connection, table, ordered_set, pt.setTypes)
                 self.connection.executemany( "INSERT OR IGNORE INTO downloadlinks(name,bookid,downloadtypeid) VALUES (?,?,?)"
                 , map(|x| => (x[0], x[1], x[2]) parse_results.field_sets[Fields.FILES].setLinks))
@@ -47,9 +63,8 @@ impl DBCache for SQLiteCache {
             }
             else {
                 self.__insert_many_field(self.table_map[idx], "name", pt.set)
-            }
+            }*/
         }
-        for (idx, )*/
     }
     fn query(&self) {
 
@@ -61,7 +76,44 @@ impl DBCache for SQLiteCache {
 type OrderedSet = std::collections::BTreeSet<String>;
 
 impl SQLiteCache {
-    fn insert_many_fields(&mut self, table: &str, ordered_set: OrderedSet) {
+    fn insert_many_fields(connection: &mut Connection, table: &str, field: &str, ordered_set: &OrderedSet) {
+        if ordered_set.is_empty() {
+            return;
+        }
 
+        let query = std::format!("INSERT OR IGNORE {}({}) VALUES(?)", table, field);
+
+        let mut smt = connection.prepare(query.as_str()).unwrap();
+        for item in ordered_set.iter() {
+            smt.execute([item.as_str().as_bytes()]);
+        }
+        connection.flush_prepared_statement_cache();
     }
+
+    fn insert_many_field_id(connection: &mut Connection, table: &str, field1: &str, field2: &str, ordered_set: &OrderedSet, book_id: &str) {
+        if ordered_set.is_empty() {
+            return;
+        }
+
+        let query = format!("INSERT OR IGNORE INTO {}({}, {}) VALUES (?,?)", table, field1, field2);
+        
+        let mut smt = connection.prepare(query.as_str()).unwrap();
+        for item in ordered_set.iter() {
+            smt.execute([book_id.as_bytes(), item.as_str().as_bytes()]);
+        }
+        connection.flush_prepared_statement_cache();
+    }
+
+    fn insert_links(connection: &mut Connection, ids: Vec<i32>, table_name: String, link1_name: &str, link2_name: &str) {
+        if ids.is_empty() {
+            return;
+        }
+        let query = format!("INSERT INTO {}({},{}) VALUES (?,?)", table_name, link1_name, link2_name);
+        let mut smt = connection.prepare(query.as_str()).unwrap();
+        //for item in ordered_set.iter() {
+        //    smt.execute([book_id.as_bytes(), item.as_str().as_bytes()]);
+        //}
+        connection.flush_prepared_statement_cache();
+    }
+
 }

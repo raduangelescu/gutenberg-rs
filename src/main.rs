@@ -1,4 +1,5 @@
 use bzip2::read::BzDecoder;
+use db_cache::DBCache;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
@@ -135,5 +136,7 @@ async fn main() {
     //let (total_archive_size, bz_filename) = decompress_bz(filename).unwrap();
     //decompress_tar(bz_filename.as_str(), total_archive_size).unwrap();
     let folder = Path::new("cache").join("epub");
-    xml_parser::parse_xml(&folder);
+    let parse_result = xml_parser::parse_xml(&folder);
+    let mut cache = sqlite_cache::SQLiteCache::default();
+    cache.create_cache(&parse_result);
 }
