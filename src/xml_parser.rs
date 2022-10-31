@@ -1,20 +1,26 @@
 use fast_xml::events::Event;
 use fast_xml::Reader;
+use indexmap::IndexSet;
 use std::borrow::Borrow;
 use std::fs;
 use std::path::PathBuf;
 use std::str;
 
 use crate::fst_parser_node::FSTParserNode;
+use crate::fst_parser_or_node::FSTParserOrNode;
+use crate::fst_parser_file_node::FSTParserFileNode;
 use crate::fst_parser_type::ParseType;
 use crate::fst_parser::FSTParser;
+use crate::book::Book;
+use crate::fst_parser::ParseResult;
 
-fn parse_rdf(path: &PathBuf, all_checks: &mut Vec<FSTParserNode>) -> i32 {
+fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, out:&mut ParseResult) -> usize {
     println!("Doing: {}", path.display());
 
     let mut reader = Reader::from_file(path).unwrap();
     let mut buf = Vec::new();
-    let mut book_id = -1;
+    let mut book_id:usize = 0;
+   
     loop {
         reader.trim_text(true);
 
@@ -24,6 +30,7 @@ fn parse_rdf(path: &PathBuf, all_checks: &mut Vec<FSTParserNode>) -> i32 {
                 if current_node_name.eq("rdf::RDF") {
                     continue;
                 }
+                
                 if current_node_name.eq("pgterms:ebook") {
                     for attr in e.attributes() {
                         let attr_val = attr.unwrap();
@@ -31,73 +38,78 @@ fn parse_rdf(path: &PathBuf, all_checks: &mut Vec<FSTParserNode>) -> i32 {
                             let str_book_id = str::from_utf8(attr_val.value.borrow()).unwrap();
                             let splits = str_book_id.split("/").collect::<Vec<&str>>();
                             assert!(splits.len() == 2);
-                            book_id = splits[1].parse::<i32>().unwrap();
+                            book_id = splits[1].parse::<usize>().unwrap();
                         }
                     }
-                    assert!(book_id != -1);
                     continue;
                 }
-
-                //e.unescape_and_decode(&reader).unwrap().as_str().clone_into(&mut current_node_name);
-                for check in all_checks.iter_mut() {
-                    check.start_node(current_node_name, e.attributes());
+                
+                for check in field_parsers.iter_mut() {
+                    check.start_node(current_node_name);
+                    for attr in e.attributes() {
+                        let a = attr.unwrap();
+                        let value = str::from_utf8(a.value.borrow()).unwrap();
+                        let key = str::from_utf8(a.key.borrow()).unwrap();
+                        check.attribute(&key, &value, out);
+                    }    
                 }
             }
+
             Ok(Event::End(ref e)) => {
                 let current_node_name = str::from_utf8(e.name()).unwrap();
-                for check in all_checks.iter_mut() {
+                for check in field_parsers.iter_mut() {
                     check.end_node(current_node_name);
                 }
             }
+
             Ok(Event::Text(ref e)) => {
-                for check in all_checks.iter_mut() {
-                    check.text(e.unescape_and_decode(&reader).unwrap().as_str());
+                for check in field_parsers.iter_mut() {
+                    check.text(e.unescape_and_decode(&reader).unwrap().as_str(), out);
                 }
             }
+
             Ok(Event::Eof) => break,
             Err(e) => panic!("Error at position {}: {:?}", reader.buffer_position(), e),
             _ => (),
         }
     }
+    /* check_single(&field_parsers[ParseType::Title as usize]);
+    check_single(&field_parsers[ParseType::Publisher as usize]);
+    check_single(&field_parsers[ParseType::Rights as usize]);
+    check_single(&field_parsers[ParseType::DateIssued as usize]);
+    check_single(&field_parsers[ParseType::Downloads as usize]);*/
     return book_id;
 }
 
 pub fn parse_xml(folder_path: &PathBuf) {
     let paths = fs::read_dir(folder_path).unwrap();
-    let mut all_checks = vec![
-        FSTParserNode::build(vec!["dcterms:title"], ParseType::Title, ""),
-        FSTParserNode::build(vec!["dcterms:alternative"], ParseType::TitleAlternative, ""),
+    let mut parse_result : ParseResult = ParseResult {
+        books : Vec::new(),
+        data : Vec::new(),
+    };
+    let mut field_parsers = vec![
+        FSTParserOrNode::build(vec![
+                    vec!["dcterms:title".to_string()],
+                    vec!["dcterms:alternative".to_string()]], ParseType::Title),
         FSTParserNode::build(
             vec!["dcterms:subject", "rdf:Description", "rdf:value"],
             ParseType::Subject,
-            "",
         ),
         FSTParserNode::build(
             vec!["dcterms:language", "rdf:Description", "rdf:value"],
             ParseType::Language,
-            "",
         ),
-        FSTParserNode::build(
-            vec!["dcterms:creator", "pgterms:agent", "pgterms:name"],
+        FSTParserOrNode::build(vec![
+            vec!["dcterms:creator".to_string(), "pgterms:agent".to_string(), "pgterms:name".to_string()],
+            vec!["dcterms:creator".to_string(), "pgterms:agent".to_string(), "pgterms:agent".to_string()]
+            ],
             ParseType::Author,
-            "",
-        ),
-        FSTParserNode::build(
-            vec!["dcterms:creator", "pgterms:agent", "pgterms:agent"],
-            ParseType::AuthorAlternative,
-            "",
         ),
         FSTParserNode::build(
             vec!["pgterms:bookshelf", "rdf:Description", "rdf:value"],
             ParseType::Bookshelf,
-            "",
         ),
-        FSTParserNode::build(
-            vec!["dcterms:hasFormat", "pgterms:file"],
-            ParseType::FilesLinks,
-            "rdf:about",
-        ),
-        FSTParserNode::build(
+        FSTParserFileNode::build(
             vec![
                 "dcterms:hasFormat",
                 "pgterms:file",
@@ -105,31 +117,55 @@ pub fn parse_xml(folder_path: &PathBuf) {
                 "rdf:Description",
                 "rdf:value",
             ],
-            ParseType::FilesType,
-            "",
+            "rdf:about",
+            ParseType::Files,
         ),
-        FSTParserNode::build(vec!["dcterms:publisher"], ParseType::Publisher, ""),
-        FSTParserNode::build(vec!["dcterms:rights"], ParseType::Rights, ""),
-        FSTParserNode::build(vec!["dcterms:issued"], ParseType::DateIssued, ""),
-        FSTParserNode::build(vec!["pgterms:downloads"], ParseType::Downloads, ""),
+        FSTParserNode::build(vec!["dcterms:publisher"], ParseType::Publisher),
+        FSTParserNode::build(vec!["dcterms:rights"], ParseType::Rights),
+        FSTParserNode::build(vec!["dcterms:issued"], ParseType::DateIssued),
+        FSTParserNode::build(vec!["pgterms:downloads"], ParseType::Downloads),
     ];
+
+    for _ in  &field_parsers {
+        parse_result.data.push(IndexSet::new());
+    }
+
     for path in paths {
         let path_value = path.unwrap();
         let file_paths = fs::read_dir(path_value.path()).unwrap();
         for file_path in file_paths {
-            let book_id = parse_rdf(&file_path.unwrap().path(), &mut all_checks);
+            let book_id = parse_rdf(&file_path.unwrap().path(), &mut field_parsers, &mut parse_result);
             println!("BookId: {}", book_id);
-            for check in all_checks.iter_mut() {
-                if check.has_results() {
-                    println!(
-                        "{}: {}",
-                        check.get_parse_type().to_string(),
-                        check.results.join("|")
-                    );
-                }
-                check.reset();
+            println!("-------------------------------------------------------------");
+            let publisher_id = field_parsers[ParseType::Publisher as usize].get_result().unwrap().item_links[0]; 
+            let title_id = field_parsers[ParseType::Title as usize].get_result().unwrap().item_links[0]; 
+            let rights_id = field_parsers[ParseType::Rights as usize].get_result().unwrap().item_links[0];
+            let date_id = field_parsers[ParseType::DateIssued as usize].get_result().unwrap().item_links[0];
+            let down_id = field_parsers[ParseType::Downloads as usize].get_result().unwrap().item_links[0];
+
+            let language_ids = field_parsers[ParseType::Language as usize].get_result().unwrap().item_links.clone();
+            let subject_ids = field_parsers[ParseType::Subject as usize].get_result().unwrap().item_links.clone();
+            let author_ids = field_parsers[ParseType::Author as usize].get_result().unwrap().item_links.clone();
+            let bookshelf_ids = field_parsers[ParseType::Bookshelf as usize].get_result().unwrap().item_links.clone();
+            parse_result.books.push(Book {
+                publisher_id,
+                title_id,
+                rights_id,
+                gutenberg_book_id : book_id,
+                date_issued : parse_result.data[ParseType::DateIssued as usize][date_id as usize].clone(),
+                num_downloads : parse_result.data[ParseType::Downloads as usize][down_id as usize].parse::<i32>().unwrap(),
+                
+                language_ids,
+                subject_ids,
+                author_ids,
+                bookshelf_ids,
+            });
+            for parser in &mut field_parsers {
+                parser.reset();
             }
-            println!("-------------------------------------------------------------")
+        }
+        for book in &parse_result.books {
+            book.debug(&parse_result);
         }
     }
 }

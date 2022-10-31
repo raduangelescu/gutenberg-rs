@@ -1,34 +1,33 @@
 use crate::fst_parser_type::ParseType;
-use crate::fst_parser::FSTParser;
+use crate::fst_parser::{FSTParser, ParseItemResult, ParseResult, ParseError};
 
-use fast_xml::events::attributes::Attributes;
-use std::borrow::Borrow;
 use std::str;
 
 pub struct FSTParserNode {
     pub pos: i32,
     pub states: Vec<String>,
-    pub results: Vec<String>,
+    pub result: ParseItemResult,
     pub has_result: bool,
     pub parse_type: ParseType,
-    pub attribute: String,
 }
 
 impl FSTParser for FSTParserNode {
-    fn text(&mut self, text: &str) {
-        if self.is_found() && self.attribute.eq("") {
+    fn text(&mut self, text: &str, parse_result:&mut ParseResult) {
+        if self.is_found() {
             self.has_result = true;
-            self.results.push(String::from(text));
+            self.result.add(parse_result, self.parse_type, text.to_string());
         }
     }
 
     fn reset(&mut self) {
         self.has_result = false;
-        self.results = vec![];
         self.pos = -1;
+        self.result.reset();
     }
 
-    fn start_node(&mut self, node_name: &str, attributes: Attributes) {
+    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult) {}
+
+    fn start_node(&mut self, node_name: &str) {
         if self.pos == -1 && node_name.eq(&self.states[0]) {
             self.pos = 0;
             return;
@@ -40,17 +39,6 @@ impl FSTParser for FSTParserNode {
             }
             if node_name.eq(&self.states[check_index as usize]) {
                 self.pos += 1;
-            }
-        }
-        if self.is_found() && !self.attribute.eq("") {
-            for attr in attributes {
-                let attr_val = attr.unwrap();
-                if attr_val.key.eq(self.attribute.as_bytes()) {
-                    let value = str::from_utf8(attr_val.value.borrow()).unwrap();
-                    self.results.push(String::from(value));
-                    self.has_result = true;
-                    break;
-                }
             }
         }
     }
@@ -73,22 +61,22 @@ impl FSTParser for FSTParserNode {
     fn get_parse_type(&self) -> ParseType {
         self.parse_type
     }
-    fn get_results(&self) -> &Vec<String> {
-        &self.results
+
+    fn get_result(&self) -> Result<&ParseItemResult, ParseError> {
+        Ok(&self.result)
     }
 }
 
 impl FSTParserNode {
-    pub fn build(states_str: Vec<&str>, parse_type: ParseType, attribute: &str) -> FSTParserNode {
+    pub fn build(states_str: Vec<&str>, parse_type: ParseType) -> Box<dyn FSTParser> {
         let states = states_str.iter().map(|&v| String::from(v)).collect();
-        FSTParserNode {
+        Box::new(FSTParserNode {
             pos: -1,
             states,
             has_result: false,
-            results: vec![],
             parse_type,
-            attribute: String::from(attribute),
-        }
+            result : Default::default(),
+        })
     }
 }
 

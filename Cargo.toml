@@ -12,3 +12,5 @@ tokio = { version = "1.13.0", features = ["full"] }
 bzip2 = "0.4.3"
 tar = "0.4.38"
 fast-xml ="0.23.1"
+sqlite = "0.27.3"
+indexmap = "1.9.1"

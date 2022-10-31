@@ -11,7 +11,13 @@ use tar::Archive;
 mod xml_parser;
 mod fst_parser;
 mod fst_parser_node;
+mod fst_parser_or_node;
+mod fst_parser_file_node;
 mod fst_parser_type;
+mod db_cache;
+mod sqlite_cache;
+mod book;
+
 
 pub async fn download_file(client: &Client, url: &str, path: &str) -> Result<(), String> {
     let res = client
@@ -117,12 +123,11 @@ fn decompress_tar(path: &str, initial_size: u64) -> Result<(), std::io::Error> {
 
 #[tokio::main]
 async fn main() {
-    println!("starting test");
-    let filename = "gutenberg.tar.bz2";
+    //let filename = "gutenberg.tar.bz2";
 
-    download_file(&Client::new(), "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2", "gutenberg.tar.bz2").await.unwrap();
-    let (total_archive_size, bz_filename) = decompress_bz(filename).unwrap();
-    decompress_tar(bz_filename.as_str(), total_archive_size).unwrap();
+    //download_file(&Client::new(), "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2", "gutenberg.tar.bz2").await.unwrap();
+    //let (total_archive_size, bz_filename) = decompress_bz(filename).unwrap();
+    //decompress_tar(bz_filename.as_str(), total_archive_size).unwrap();
     let folder = Path::new("cache").join("epub");
     xml_parser::parse_xml(&folder);
 }
