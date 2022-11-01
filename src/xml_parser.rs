@@ -5,6 +5,7 @@ use std::borrow::Borrow;
 use std::fs;
 use std::path::PathBuf;
 use std::str;
+use indicatif::{ProgressBar, ProgressStyle};
 
 use crate::fst_parser_node::FSTParserNode;
 use crate::fst_parser_or_node::FSTParserOrNode;
@@ -16,8 +17,6 @@ use crate::fst_parser::ParseResult;
 use crate::fst_parser::ParseItemResult;
 
 fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, out:&mut ParseResult) -> usize {
-    println!("Doing: {}", path.display());
-
     let mut reader = Reader::from_file(path).unwrap();
     let mut buf = Vec::new();
     let mut book_id:usize = 0;
@@ -130,8 +129,18 @@ pub fn parse_xml(folder_path: &PathBuf) -> ParseResult {
     for _ in  &field_parsers {
         parse_result.data.push(IndexSet::new());
     }
+    let all_paths = paths.collect::<Vec<_>>();
+    let pb = ProgressBar::new(all_paths.len() as u64);
+    pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})")
+    .unwrap()
+    .progress_chars("█  "));
 
-    for path in paths {
+    pb.set_message(format!("Parsing rdf"));
+    let mut idx = 0;
+    for path in all_paths {
+        idx = idx + 1;
+        pb.set_position( idx as u64);
+        
         let path_value = path.unwrap();
         let file_paths = fs::read_dir(path_value.path()).unwrap();
         for file_path in file_paths {
@@ -194,9 +203,7 @@ pub fn parse_xml(folder_path: &PathBuf) -> ParseResult {
                 parser.reset();
             }
         }
-        for book in &parse_result.books {
-            book.debug(&parse_result);
-        }
     }
+    pb.finish();
     parse_result
 }

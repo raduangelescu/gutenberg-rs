@@ -3,7 +3,7 @@ use crate::fst_parser_type::ParseType;
 use crate::fst_parser::ParseResult;
 use num_derive::FromPrimitive;    
 use num_traits::FromPrimitive;
-
+use indexmap::IndexSet;
 use rusqlite::{Connection};
 use std::fmt;
 
@@ -34,21 +34,37 @@ impl Default for SQLiteCache {
 impl DBCache for SQLiteCache {
     fn create_cache(&mut self, parse_results: &ParseResult) { 
         let mut connection = Connection::open(&self.sqlite_db_create_cache_filename).unwrap();
-        let create_query = std::fs::read_to_string(&self.sqlite_db_create_cache_filename).unwrap();
-        connection.execute_batch(create_query.as_str()).unwrap();
+        let create_query = include_str!("gutenbergindex.db.sql");
+        connection.execute_batch(create_query).unwrap();
         
         for (idx,  result) in parse_results.data.iter().enumerate() {
+            let book_id = parse_results.books[idx].gutenberg_book_id;
             match FromPrimitive::from_usize(idx) {
                 Some(ParseType::Title) => {
-                    println!("{}", idx);
-                }
+                    SQLiteCache::insert_many_field_id(&mut connection,
+                        "titles",
+                        "name",
+                        "book_id",
+                        result, 
+                        book_id);
+                    }
                 Some(ParseType::Subject) => {},
                 Some(ParseType::Language) => {},
                 Some(ParseType::Author) => {},
                 Some(ParseType::Bookshelf) => {},
                 Some(ParseType::Files) => {},
-                Some(ParseType::Publisher) => {},
-                Some(ParseType::Rights) => {},
+                Some(ParseType::Publisher) => {
+                    SQLiteCache::insert_many_fields(&mut connection,
+                        "publishers",
+                        "name",
+                    result);
+                },
+                Some(ParseType::Rights) => {
+                    SQLiteCache::insert_many_fields(&mut connection,
+                        "rights",
+                        "name",
+                    result);
+                },
                 Some(ParseType::DateIssued) => {},
                 Some(ParseType::Downloads) => {},
                 None => {},
@@ -76,7 +92,7 @@ impl DBCache for SQLiteCache {
 type OrderedSet = std::collections::BTreeSet<String>;
 
 impl SQLiteCache {
-    fn insert_many_fields(connection: &mut Connection, table: &str, field: &str, ordered_set: &OrderedSet) {
+    fn insert_many_fields(connection: &mut Connection, table: &str, field: &str, ordered_set: &IndexSet<String>) {
         if ordered_set.is_empty() {
             return;
         }
@@ -90,7 +106,7 @@ impl SQLiteCache {
         connection.flush_prepared_statement_cache();
     }
 
-    fn insert_many_field_id(connection: &mut Connection, table: &str, field1: &str, field2: &str, ordered_set: &OrderedSet, book_id: &str) {
+    fn insert_many_field_id(connection: &mut Connection, table: &str, field1: &str, field2: &str, ordered_set: &IndexSet<String>, book_id: usize) {
         if ordered_set.is_empty() {
             return;
         }
@@ -99,7 +115,8 @@ impl SQLiteCache {
         
         let mut smt = connection.prepare(query.as_str()).unwrap();
         for item in ordered_set.iter() {
-            smt.execute([book_id.as_bytes(), item.as_str().as_bytes()]);
+            smt.execute([book_id]);
+            smt.execute([item.as_str().as_bytes()]);
         }
         connection.flush_prepared_statement_cache();
     }
