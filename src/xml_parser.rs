@@ -135,8 +135,7 @@ pub fn parse_xml(folder_path: &PathBuf) -> Result<ParseResult, Box<dyn Error>> {
     }
 
     let mut all_paths = paths.collect::<Vec<_>>();
-    all_paths.truncate(10);
-
+    
     let pb = ProgressBar::new(all_paths.len() as u64);
     pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})")
     ?.progress_chars("█  "));
