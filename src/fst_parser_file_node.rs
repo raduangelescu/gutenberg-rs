@@ -1,6 +1,7 @@
 use crate::fst_parser_type::ParseType;
 use crate::fst_parser::{FSTParser, ParseResult, ParseItemResult};
-use crate::error::{ParseError};
+use crate::error::ParseError;
+use crate::book::GutenbergFileEntry;
 
 use std::str;
 
@@ -9,10 +10,10 @@ pub(crate) struct FSTParserFileNode {
     attribute_states_idx: i32,
     states: Vec<String>,
     attribute: String,
-    result_files: ParseItemResult,
-    result_file_links: ParseItemResult,
     has_node: bool,
     parse_type: ParseType,
+    
+    files: Vec<GutenbergFileEntry>,
 }
 
 impl FSTParser for FSTParserFileNode {
@@ -21,15 +22,14 @@ impl FSTParser for FSTParserFileNode {
             return;
         }
         self.has_node = true;
-        self.result_files.add(parse_result, self.parse_type, text.to_string(), book_id);
-    
+        let idx = parse_result.add_file_type( text.to_string(), book_id).unwrap();
+        self.files.last_mut().unwrap().file_type_id = idx as i32;
     }
 
     fn reset(&mut self) {
         self.has_node = false;
         self.pos = -1;
-        self.result_file_links.reset();
-        self.result_files.reset();
+        self.files.clear();
     }
 
     fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult, book_id: i32) {
@@ -42,7 +42,10 @@ impl FSTParser for FSTParserFileNode {
             }
 
             let value = attribute_value;
-            self.result_file_links.add(parse_result, self.parse_type, value.to_string(), book_id);
+            self.files.push(GutenbergFileEntry{
+                file_link_id : parse_result.add_file(value.to_string(), book_id).unwrap() as i32,
+                file_type_id : -1,
+            });
     }
     
 
@@ -76,7 +79,7 @@ impl FSTParser for FSTParserFileNode {
     }
 
     fn has_results(&self) -> bool {
-        return self.has_node && !self.result_file_links.item_links.is_empty();
+        return self.has_node && !self.files.is_empty();
     }
 
     fn get_parse_type(&self) -> ParseType {
@@ -84,9 +87,12 @@ impl FSTParser for FSTParserFileNode {
     }
 
     fn get_result(&self) -> Result<&ParseItemResult, ParseError> {
-        Ok(&self.result_files)
+        Err(ParseError::InvalidResult("Nothing".to_string()))
     }
-    
+
+    fn get_files(&self) ->  Result<Vec<GutenbergFileEntry>, ParseError> {
+        Ok(self.files.to_vec())
+    }
 }
 
 impl FSTParserFileNode {
@@ -96,10 +102,9 @@ impl FSTParserFileNode {
             states: states_str.iter().map(|&v| String::from(v)).collect(),
             has_node: false,
             parse_type,
-            result_files : Default::default(),
-            result_file_links : Default::default(),
             attribute: attribute.to_string(),
             attribute_states_idx: 1,
+            files : Vec::new(),
         })
     }
 }

@@ -1,6 +1,12 @@
 use crate::fst_parser::ParseResult;
 use crate::fst_parser_type::ParseType;
 
+#[derive(Debug, Copy, Clone)]
+pub struct GutenbergFileEntry {
+    pub file_link_id: i32,
+    pub file_type_id: i32,
+}
+
 pub struct Book {
     pub publisher_id : i32,
     pub title_id : i32,
@@ -13,6 +19,8 @@ pub struct Book {
     pub subject_ids : Vec<usize>,
     pub author_ids : Vec<usize>,
     pub bookshelf_ids : Vec<usize>,
+
+    pub files : Vec<GutenbergFileEntry>,
 }
 
 impl Book {

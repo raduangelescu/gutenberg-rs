@@ -1,7 +1,7 @@
 use crate::fst_parser_type::ParseType;
 use crate::error::ParseError;
-use indexmap::IndexMap;
-use crate::book::Book;
+use indexmap::{IndexMap, IndexSet};
+use crate::book::{Book,GutenbergFileEntry};
 use std::borrow::Borrow;
 use std::error::Error;
 
@@ -22,22 +22,24 @@ impl ParseItemResult {
     }
 }
 
+#[derive(Default)]
 pub struct DictionaryItemContent {
     pub book_links : Vec<usize>,
 }
-
 
 #[derive(Default)]
 pub struct ParseResult {
     pub books : Vec<Book>,
     pub field_dictionaries : Vec<IndexMap<String, DictionaryItemContent>>,
+    pub files_dictionary : IndexMap<String, DictionaryItemContent>,
+    pub file_types_dictionary : IndexMap<String, DictionaryItemContent>,
 }
 
 impl ParseResult {
-    pub fn add_field(&mut self, field: ParseType, data: String, book_id : i32) -> Result<usize, ParseError> {
-        let mut map_entry = self.field_dictionaries[field as usize].get_full_mut(data.as_str());
+    pub fn add(map :&mut IndexMap<String, DictionaryItemContent>, data: String, book_id : i32) -> Result<usize, ParseError>{
+        let mut map_entry = map.get_full_mut(data.as_str());
         if map_entry.is_none() {
-            let result = self.field_dictionaries[field as usize].insert_full(data, DictionaryItemContent {
+            let result = map.insert_full(data, DictionaryItemContent {
                 book_links : vec![book_id as usize],
             });
             return Ok(result.0);
@@ -52,6 +54,15 @@ impl ParseResult {
         }
         Ok(data_idx)
     }
+    pub fn add_file(&mut self, data: String, book_id : i32) -> Result<usize, ParseError> {
+        ParseResult::add(&mut self.files_dictionary, data, book_id)
+    }
+    pub fn add_file_type(&mut self, data: String, book_id : i32) -> Result<usize, ParseError> {
+        ParseResult::add(&mut self.file_types_dictionary, data, book_id)
+    }
+    pub fn add_field(&mut self, field: ParseType, data: String, book_id : i32) -> Result<usize, ParseError> { 
+        ParseResult::add(&mut self.field_dictionaries[field as usize], data, book_id)
+    }
 }
 pub trait FSTParser {
     fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32);
@@ -63,4 +74,5 @@ pub trait FSTParser {
     fn has_results(&self) -> bool;
     fn get_parse_type(&self) -> ParseType;
     fn get_result(&self) -> Result<&ParseItemResult, ParseError>;
+    fn get_files(&self) ->  Result<Vec<GutenbergFileEntry>, ParseError>;
 }

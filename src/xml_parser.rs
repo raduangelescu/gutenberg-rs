@@ -1,12 +1,13 @@
 use fast_xml::events::Event;
 use fast_xml::Reader;
-use indexmap::IndexMap;
+use indexmap::{IndexMap};
 use std::borrow::Borrow;
 use std::fs;
 use std::path::PathBuf;
 use std::str;
 use indicatif::{ProgressBar, ProgressStyle};
 
+use crate::fst_parser::DictionaryItemContent;
 use crate::fst_parser_node::FSTParserNode;
 use crate::fst_parser_or_node::FSTParserOrNode;
 use crate::fst_parser_file_node::FSTParserFileNode;
@@ -87,6 +88,8 @@ pub fn parse_xml(folder_path: &PathBuf) -> Result<ParseResult, Box<dyn Error>> {
     let mut parse_result : ParseResult = ParseResult {
         books : Vec::new(),
         field_dictionaries : Vec::new(),
+        file_types_dictionary : IndexMap::<String, DictionaryItemContent>::default(),
+        files_dictionary : IndexMap::<String, DictionaryItemContent>::default(),
     };
     let mut field_parsers = vec![
         FSTParserOrNode::build(vec![
@@ -130,6 +133,7 @@ pub fn parse_xml(folder_path: &PathBuf) -> Result<ParseResult, Box<dyn Error>> {
     for _ in  &field_parsers {
         parse_result.field_dictionaries.push(IndexMap::new());
     }
+
     let mut all_paths = paths.collect::<Vec<_>>();
     all_paths.truncate(10);
 
@@ -202,6 +206,8 @@ pub fn parse_xml(folder_path: &PathBuf) -> Result<ParseResult, Box<dyn Error>> {
                 subject_ids,
                 author_ids,
                 bookshelf_ids,
+                files: field_parsers[ParseType::Files as usize].get_files().unwrap(),
+                
             });
             for parser in &mut field_parsers {
                 parser.reset();

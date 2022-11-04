@@ -88,7 +88,10 @@ impl DBCache for SQLiteCache {
             }
             
         }
-
+        SQLiteCache::insert_many_fields(&mut connection,
+            "downloadlinkstype",
+            "name", &parse_results.file_types_dictionary)?;
+        
         for (idx, book) in parse_results.books.iter().enumerate() {
             let pairs_book_authors = book.author_ids.iter().map(|x| (*x + 1, idx + 1)).collect::<Vec<(usize, usize)>>();
             let pairs_book_subjects = book.subject_ids.iter().map(|x| (*x + 1, idx + 1)).collect::<Vec<(usize, usize)>>();
@@ -100,6 +103,15 @@ impl DBCache for SQLiteCache {
             SQLiteCache::insert_links(&mut connection, pairs_book_languages, "book_languages", "languageid", "bookid")?;
             SQLiteCache::insert_links(&mut connection, pairs_book_bookshelves, "book_bookshelves", "bookshelfid", "bookid")?;
             
+            let query = format!("INSERT OR IGNORE INTO downloadlinks(name, downloadtypeid, bookid) VALUES (?,?,?)");
+        
+            let mut smt = connection.prepare(query.as_str())?;
+            for item in book.files.iter() {
+                let file_link = parse_results.files_dictionary.get_index(item.file_link_id as usize).unwrap().0;
+                smt.execute([file_link, item.file_type_id.to_string().as_str(), idx.to_string().as_str()])?;
+            }
+            connection.flush_prepared_statement_cache();
+
             connection.execute("INSERT OR IGNORE INTO books(publisherid,dateissued,rightsid,numdownloads,gutenbergbookid) VALUES (?,?,?,?,?)"
             , (book.publisher_id, book.date_issued.clone(), book.rights_id,
             book.num_downloads,book.gutenberg_book_id))?;
@@ -113,7 +125,6 @@ impl DBCache for SQLiteCache {
         Ok(())
     }
 }
-type OrderedSet = std::collections::BTreeSet<String>;
 
 impl SQLiteCache {
     fn insert_links (connection: &mut Connection, links: Vec<(usize, usize)>, table_name: &str, link1_name: &str, link2_name: &str) -> Result<(), Box<dyn Error>>{
