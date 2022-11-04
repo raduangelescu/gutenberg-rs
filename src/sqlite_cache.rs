@@ -35,7 +35,7 @@ impl DBCache for SQLiteCache {
         let mut connection = Connection::open(&self.sqlite_db_filename)?;
         let create_query = include_str!("gutenbergindex.db.sql");
         connection.execute_batch(create_query)?;
-        connection.execute_batch("PRAGMA journal_mode = OFF;PRAGMA synchronous = 0;PRAGMA cache_size = 1000000;PRAGMA locking_mode = EXCLUSIVE;PRAGMA temp_store = MEMORY;");
+        connection.execute_batch("PRAGMA journal_mode = OFF;PRAGMA synchronous = 0;PRAGMA cache_size = 1000000;PRAGMA locking_mode = EXCLUSIVE;PRAGMA temp_store = MEMORY;")?;
         let mut book_id = 0;
         let pb_fields = ProgressBar::new(parse_results.field_dictionaries.len() as u64);
         pb_fields.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})")
@@ -147,7 +147,7 @@ impl DBCache for SQLiteCache {
     fn query(&self) -> Result<(), Box<dyn Error>> {
         Ok(())
     }
-    fn native_query(self, query: &str) -> Result<(), Box<dyn Error>> {
+    fn native_query(self, __query: &str) -> Result<(), Box<dyn Error>> {
         Ok(())
     }
 }

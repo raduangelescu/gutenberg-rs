@@ -1,8 +1,7 @@
 use crate::fst_parser_type::ParseType;
 use crate::error::ParseError;
-use indexmap::{IndexMap, IndexSet};
+use indexmap::{IndexMap};
 use crate::book::{Book,GutenbergFileEntry};
-use std::borrow::Borrow;
 use std::error::Error;
 
 #[derive(Default)]
