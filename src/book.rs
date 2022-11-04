@@ -24,6 +24,7 @@ pub struct Book {
 }
 
 impl Book {
+    #[allow(dead_code)]
     fn get_str(ids: &Vec<usize>, parse_type: ParseType, parse_result: &ParseResult) -> String {
         ids
         .iter()
@@ -32,6 +33,7 @@ impl Book {
         .join("|")
     }
 
+    #[allow(dead_code)]
     fn get_str_single(id: i32, parse_type: ParseType, parse_result: &ParseResult) -> String {
         if id >= 0 {
             return parse_result.field_dictionaries[parse_type as usize].get_index(id as usize).unwrap().0.to_string();
@@ -39,8 +41,9 @@ impl Book {
         "".to_string()
     }
 
+    #[allow(dead_code)]
     pub fn debug(&self, parse_result:&ParseResult) {
-        if(self.language_ids.len() > 1) {
+        if self.language_ids.len() > 1 {
         println!("---------BOOK {} -------", self.gutenberg_book_id);
         println!("- title: {}", Book::get_str_single(self.title_id, ParseType::Title, parse_result));
         println!("- publisher: {}", Book::get_str_single(self.publisher_id, ParseType::Publisher, parse_result));

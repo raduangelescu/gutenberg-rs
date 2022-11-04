@@ -4,6 +4,7 @@ use crate::fst_parser_node::{FSTParserNode};
 use crate::error::{ParseError};
 use crate::book::GutenbergFileEntry;
 use std::str;
+use std::error::Error;
 
 pub struct FSTParserOrNode {
     pub nodes : Vec<FSTParserNode>,
@@ -11,10 +12,11 @@ pub struct FSTParserOrNode {
 }
 
 impl FSTParser for FSTParserOrNode {
-    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32) {
+    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32) -> Result<(), Box<dyn Error>> {
         for node in &mut self.nodes {
-            node.text(text, parse_result, book_id);
+            node.text(text, parse_result, book_id)?;
         }
+        Ok(())
     }
 
     fn reset(&mut self) {
@@ -23,7 +25,7 @@ impl FSTParser for FSTParserOrNode {
         }
     }
 
-    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult, book_id: i32) {}
+    fn attribute(&mut self, _attribute_name: &str, _attribute_value: &str, _parse_result:&mut ParseResult, _book_id: i32) {}
     
     fn start_node(&mut self, node_name: &str) {
         for node in &mut self.nodes {

@@ -66,7 +66,7 @@ fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, book_i
 
             Ok(Event::Text(ref e)) => {
                 for check in field_parsers.iter_mut() {
-                    check.text(e.unescape_and_decode(&reader)?.as_str(), out, book_id as i32);
+                    check.text(e.unescape_and_decode(&reader)?.as_str(), out, book_id as i32)?;
                 }
             }
 
@@ -75,12 +75,7 @@ fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, book_i
             _ => (),
         }
     }
-    /* check_single(&field_parsers[ParseType::Title as usize]);
-    check_single(&field_parsers[ParseType::Publisher as usize]);
-    check_single(&field_parsers[ParseType::Rights as usize]);
-    check_single(&field_parsers[ParseType::DateIssued as usize]);
-    check_single(&field_parsers[ParseType::Downloads as usize]);*/
-    return Ok(book_id);
+    return Ok(gutenberg_book_id);
 }
 
 pub fn parse_xml(folder_path: &PathBuf) -> Result<ParseResult, Box<dyn Error>> {
@@ -149,7 +144,7 @@ pub fn parse_xml(folder_path: &PathBuf) -> Result<ParseResult, Box<dyn Error>> {
         let path_value = path?;
         let file_paths = fs::read_dir(path_value.path())?;
         for file_path in file_paths {
-            let book_id = parse_rdf(&file_path?.path(), &mut field_parsers, idx,&mut parse_result)?;
+            let gutenberg_book_id = parse_rdf(&file_path?.path(), &mut field_parsers, idx,&mut parse_result)?;
             let publisher_id = match field_parsers[ParseType::Publisher as usize].get_result() {
                     Ok(item) => item.item_links[0] as i32,
                     Err(_) => -1
@@ -195,7 +190,7 @@ pub fn parse_xml(folder_path: &PathBuf) -> Result<ParseResult, Box<dyn Error>> {
                 publisher_id,
                 title_id,
                 rights_id,
-                gutenberg_book_id : book_id,
+                gutenberg_book_id,
                 date_issued : parse_result.field_dictionaries[ParseType::DateIssued as usize]
                                 .get_index(date_id as usize).unwrap().0.to_string(),
                 num_downloads : parse_result.field_dictionaries[ParseType::Downloads as usize]

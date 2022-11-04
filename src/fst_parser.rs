@@ -36,22 +36,20 @@ pub struct ParseResult {
 
 impl ParseResult {
     pub fn add(map :&mut IndexMap<String, DictionaryItemContent>, data: String, book_id : i32) -> Result<usize, ParseError>{
-        let mut map_entry = map.get_full_mut(data.as_str());
+        let map_entry = map.get_full_mut(data.as_str());
         if map_entry.is_none() {
             let result = map.insert_full(data, DictionaryItemContent {
                 book_links : vec![book_id as usize],
             });
             return Ok(result.0);
         }
-        let mut data_idx = 0;
         match map_entry {
             Some(data) => { 
-                data_idx = data.0;
                 data.2.book_links.push(book_id as usize);
             }
             None => { return Err(ParseError::InvalidResult("bad data".to_string()));}
         }
-        Ok(data_idx)
+        Err(ParseError::InvalidResult("bad data".to_string()))
     }
     pub fn add_file(&mut self, data: String, book_id : i32) -> Result<usize, ParseError> {
         ParseResult::add(&mut self.files_dictionary, data, book_id)
@@ -64,7 +62,7 @@ impl ParseResult {
     }
 }
 pub trait FSTParser {
-    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32);
+    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32)-> Result<(), Box<dyn Error>>;
     fn reset(&mut self);
     fn start_node(&mut self, text: &str);
     fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult, book_id: i32);

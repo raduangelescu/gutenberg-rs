@@ -4,6 +4,7 @@ use crate::error::ParseError;
 use crate::book::GutenbergFileEntry;
 
 use std::str;
+use std::error::Error;
 
 pub(crate) struct FSTParserFileNode {
     pos: i32,
@@ -17,13 +18,14 @@ pub(crate) struct FSTParserFileNode {
 }
 
 impl FSTParser for FSTParserFileNode {
-    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32) {
+    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32) -> Result<(), Box<dyn Error>>{
         if !self.is_found() {
-            return;
+            return Ok(());
         }
         self.has_node = true;
-        let idx = parse_result.add_file_type( text.to_string(), book_id).unwrap();
+        let idx = parse_result.add_file_type( text.to_string(), book_id)?;
         self.files.last_mut().unwrap().file_type_id = idx as i32;
+        Ok(())
     }
 
     fn reset(&mut self) {

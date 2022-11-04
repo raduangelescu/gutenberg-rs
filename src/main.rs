@@ -8,7 +8,7 @@ use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
 use tar::Archive;
-use std::error::{Error};
+use std::error::Error;
 
 mod xml_parser;
 mod fst_parser;
@@ -100,8 +100,8 @@ fn decompress_bz(path: &str) -> Result<(u64, String),  Box<dyn Error>> {
         output_file.write(&read_buffer)?;
         pb.set_position(decoder.total_in());
         if decoder.total_in() == bz_size {
-            decoder.flush();
-            output_file.flush();
+            decoder.flush()?;
+            output_file.flush()?;
             break;
         }
     }

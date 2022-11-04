@@ -11,7 +11,9 @@ use std::path::Path;
 use indicatif::{ProgressBar, ProgressStyle};
 
 pub struct SQLiteCache {
+    #[allow(dead_code)]
     sqlite_db_create_cache_filename : String,
+    #[allow(dead_code)]
     sqlite_db_create_indices_filename : String,
     sqlite_db_filename : String,
 }
@@ -179,7 +181,7 @@ impl SQLiteCache {
         Ok(())
     }
 
-    fn insert_many_field_id(connection: &mut Connection, table: &str, field1: &str, field2: &str, field_dictionary: &IndexMap<String, DictionaryItemContent>, book_id: usize) -> Result<(), Box<dyn Error>> {
+    fn insert_many_field_id(connection: &mut Connection, table: &str, field1: &str, field2: &str, field_dictionary: &IndexMap<String, DictionaryItemContent>, _book_id: usize) -> Result<(), Box<dyn Error>> {
         if field_dictionary.is_empty() {
             return Ok(());
         }
