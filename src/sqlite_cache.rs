@@ -1,136 +1,163 @@
 use crate::db_cache::DBCache;
 use crate::fst_parser_type::ParseType;
 use crate::fst_parser::ParseResult;
-use num_derive::FromPrimitive;    
+use crate::fst_parser::DictionaryItemContent;
 use num_traits::FromPrimitive;
-use indexmap::IndexSet;
-use rusqlite::{Connection};
-use std::fmt;
+use indexmap::IndexMap;
+use rusqlite::Connection;
+use std::error::Error;
+use std::fs;
 
 pub struct SQLiteCache {
-    table_map : Vec<String>,
     sqlite_db_create_cache_filename : String,
     sqlite_db_create_indices_filename : String,
+    sqlite_db_filename : String,
 }
 
 impl Default for SQLiteCache {
     fn default() -> SQLiteCache {
     
         SQLiteCache {
-            table_map : vec!("title".to_string(),
-                            "subject".to_string(),
-                            "language".to_string(),
-                            "author".to_string(),
-                            "bookshelf".to_string(),
-                            "/---/".to_string(),
-                            "publishers".to_string(),
-                            "rights".to_string()),
             sqlite_db_create_cache_filename : String::from("gutenbergindex.db.sql"),
             sqlite_db_create_indices_filename :  String::from("gutenbergindex_indices.db.sql"),
+            sqlite_db_filename : String::from("gutenberg-rs.db"),
         }
     }
 }
 
 impl DBCache for SQLiteCache {
-    fn create_cache(&mut self, parse_results: &ParseResult) { 
-        let mut connection = Connection::open(&self.sqlite_db_create_cache_filename).unwrap();
+    fn create_cache(&mut self, parse_results: &ParseResult) ->Result<(), Box<dyn Error>> {
+        fs::remove_file(&self.sqlite_db_filename).expect("Cache is not present, creating");
+        let mut connection = Connection::open(&self.sqlite_db_filename)?;
         let create_query = include_str!("gutenbergindex.db.sql");
-        connection.execute_batch(create_query).unwrap();
+        connection.execute_batch(create_query)?;
+
+        let mut book_id = 0;
         
-        for (idx,  result) in parse_results.data.iter().enumerate() {
-            let book_id = parse_results.books[idx].gutenberg_book_id;
+        for (idx,  result) in parse_results.field_dictionaries.iter().enumerate() {
+            book_id = book_id + 1;
             match FromPrimitive::from_usize(idx) {
                 Some(ParseType::Title) => {
                     SQLiteCache::insert_many_field_id(&mut connection,
                         "titles",
                         "name",
-                        "book_id",
+                        "bookid",
                         result, 
-                        book_id);
+                        book_id)?;
                     }
-                Some(ParseType::Subject) => {},
-                Some(ParseType::Language) => {},
-                Some(ParseType::Author) => {},
-                Some(ParseType::Bookshelf) => {},
+                Some(ParseType::Subject) => {
+                    SQLiteCache::insert_many_fields(&mut connection,
+                        "subjects",
+                        "name",
+                    result)?;
+                },
+                Some(ParseType::Language) => {
+                    SQLiteCache::insert_many_fields(&mut connection,
+                        "languages",
+                        "name",
+                    result)?;
+                },
+                Some(ParseType::Author) => {
+                    SQLiteCache::insert_many_fields(&mut connection,
+                        "authors",
+                        "name",
+                    result)?;
+                },
+                Some(ParseType::Bookshelf) => {
+                    SQLiteCache::insert_many_fields(&mut connection,
+                        "bookshelves",
+                        "name",
+                    result)?;
+                },
                 Some(ParseType::Files) => {},
                 Some(ParseType::Publisher) => {
                     SQLiteCache::insert_many_fields(&mut connection,
                         "publishers",
                         "name",
-                    result);
+                    result)?;
                 },
                 Some(ParseType::Rights) => {
                     SQLiteCache::insert_many_fields(&mut connection,
                         "rights",
                         "name",
-                    result);
+                    result)?;
                 },
                 Some(ParseType::DateIssued) => {},
                 Some(ParseType::Downloads) => {},
                 None => {},
             }
-            /*if idx == ParseType::File as usize {
-                self.insert_many_fields(connection, table, ordered_set, pt.setTypes)
-                self.connection.executemany( "INSERT OR IGNORE INTO downloadlinks(name,bookid,downloadtypeid) VALUES (?,?,?)"
-                , map(|x| => (x[0], x[1], x[2]) parse_results.field_sets[Fields.FILES].setLinks))
-            }
-            else if (result.needs_book_id()) {
-                self.__insert_many_field_id(self.table_map[idx], "name", "bookid", pt.set)
-            }
-            else {
-                self.__insert_many_field(self.table_map[idx], "name", pt.set)
-            }*/
+            
         }
-    }
-    fn query(&self) {
 
+        for (idx, book) in parse_results.books.iter().enumerate() {
+            let pairs_book_authors = book.author_ids.iter().map(|x| (*x + 1, idx + 1)).collect::<Vec<(usize, usize)>>();
+            let pairs_book_subjects = book.subject_ids.iter().map(|x| (*x + 1, idx + 1)).collect::<Vec<(usize, usize)>>();
+            let pairs_book_languages = book.language_ids.iter().map(|x| (*x + 1, idx + 1)).collect::<Vec<(usize, usize)>>();
+            let pairs_book_bookshelves = book.bookshelf_ids.iter().map(|x| (*x + 1, idx + 1)).collect::<Vec<(usize, usize)>>();
+            
+            SQLiteCache::insert_links(&mut connection, pairs_book_authors, "book_authors", "authorid", "bookid")?;
+            SQLiteCache::insert_links(&mut connection, pairs_book_subjects, "book_subjects", "subjectid", "bookid")?;
+            SQLiteCache::insert_links(&mut connection, pairs_book_languages, "book_languages", "languageid", "bookid")?;
+            SQLiteCache::insert_links(&mut connection, pairs_book_bookshelves, "book_bookshelves", "bookshelfid", "bookid")?;
+            
+            connection.execute("INSERT OR IGNORE INTO books(publisherid,dateissued,rightsid,numdownloads,gutenbergbookid) VALUES (?,?,?,?,?)"
+            , (book.publisher_id, book.date_issued.clone(), book.rights_id,
+            book.num_downloads,book.gutenberg_book_id))?;
+        }
+        Ok(())
     }
-    fn native_query(self, query: &str) {
-
+    fn query(&self) -> Result<(), Box<dyn Error>> {
+        Ok(())
+    }
+    fn native_query(self, query: &str) -> Result<(), Box<dyn Error>> {
+        Ok(())
     }
 }
 type OrderedSet = std::collections::BTreeSet<String>;
 
 impl SQLiteCache {
-    fn insert_many_fields(connection: &mut Connection, table: &str, field: &str, ordered_set: &IndexSet<String>) {
-        if ordered_set.is_empty() {
-            return;
+    fn insert_links (connection: &mut Connection, links: Vec<(usize, usize)>, table_name: &str, link1_name: &str, link2_name: &str) -> Result<(), Box<dyn Error>>{
+        if links.is_empty() {
+            return Ok(())
         }
+        let query = std::format!("INSERT INTO {}({},{}) VALUES (?,?)", table_name, link1_name, link2_name);
 
-        let query = std::format!("INSERT OR IGNORE {}({}) VALUES(?)", table, field);
-
-        let mut smt = connection.prepare(query.as_str()).unwrap();
-        for item in ordered_set.iter() {
-            smt.execute([item.as_str().as_bytes()]);
+        let mut smt = connection.prepare(query.as_str())?;
+        for item in links.iter() {
+            smt.execute([item.0.to_string(), item.1.to_string()])?;
         }
         connection.flush_prepared_statement_cache();
+        Ok(())
+    }
+    fn insert_many_fields(connection: &mut Connection, table: &str, field: &str, field_dictionary: &IndexMap<String, DictionaryItemContent>) -> Result<(), Box<dyn Error>>{
+        if field_dictionary.is_empty() {
+            return Ok(())
+        }
+
+        let query = std::format!("INSERT OR IGNORE INTO {}({}) VALUES(?)", table, field);
+
+        let mut smt = connection.prepare(query.as_str())?;
+        for item in field_dictionary.iter() {
+            smt.execute([item.0.as_str().as_bytes()])?;
+        }
+        connection.flush_prepared_statement_cache();
+        Ok(())
     }
 
-    fn insert_many_field_id(connection: &mut Connection, table: &str, field1: &str, field2: &str, ordered_set: &IndexSet<String>, book_id: usize) {
-        if ordered_set.is_empty() {
-            return;
+    fn insert_many_field_id(connection: &mut Connection, table: &str, field1: &str, field2: &str, field_dictionary: &IndexMap<String, DictionaryItemContent>, book_id: usize) -> Result<(), Box<dyn Error>> {
+        if field_dictionary.is_empty() {
+            return Ok(());
         }
 
         let query = format!("INSERT OR IGNORE INTO {}({}, {}) VALUES (?,?)", table, field1, field2);
         
-        let mut smt = connection.prepare(query.as_str()).unwrap();
-        for item in ordered_set.iter() {
-            smt.execute([book_id]);
-            smt.execute([item.as_str().as_bytes()]);
+        let mut smt = connection.prepare(query.as_str())?;
+        for item in field_dictionary.iter() {
+            for book_id in &item.1.book_links {
+                smt.execute([item.0.as_str(), book_id.to_string().as_str()])?;
+            }
         }
         connection.flush_prepared_statement_cache();
+        Ok(())
     }
-
-    fn insert_links(connection: &mut Connection, ids: Vec<i32>, table_name: String, link1_name: &str, link2_name: &str) {
-        if ids.is_empty() {
-            return;
-        }
-        let query = format!("INSERT INTO {}({},{}) VALUES (?,?)", table_name, link1_name, link2_name);
-        let mut smt = connection.prepare(query.as_str()).unwrap();
-        //for item in ordered_set.iter() {
-        //    smt.execute([book_id.as_bytes(), item.as_str().as_bytes()]);
-        //}
-        connection.flush_prepared_statement_cache();
-    }
-
 }

@@ -59,6 +59,14 @@ CREATE TABLE `book_authors` (
 	`bookid`	INTEGER,
 	`authorid`	INTEGER
 );
+CREATE TABLE `book_languages` (
+	`bookid`	INTEGER,
+	`languageid`	INTEGER
+);
+CREATE TABLE `book_bookshelves` (
+	`bookid`	INTEGER,
+	`bookshelfid`	INTEGER
+);
 CREATE TABLE `authors` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT

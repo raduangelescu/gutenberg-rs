@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
 use tar::Archive;
+use std::error::{Error};
 
 mod xml_parser;
 mod fst_parser;
@@ -18,7 +19,7 @@ mod fst_parser_type;
 mod db_cache;
 mod sqlite_cache;
 mod book;
-
+mod error;
 
 pub async fn download_file(client: &Client, url: &str, path: &str) -> Result<(), String> {
     let res = client
@@ -72,14 +73,14 @@ pub async fn download_file(client: &Client, url: &str, path: &str) -> Result<(),
     return Ok(());
 }
 
-fn decompress_bz(path: &str) -> Result<(u64, String), std::io::Error> {
+fn decompress_bz(path: &str) -> Result<(u64, String),  Box<dyn Error>> {
     let bz_file = File::open(path)?;
     let bz_size = bz_file.metadata().unwrap().len();
     let new_filename = &path[..path.len() - 3];
 
     let pb = ProgressBar::new(bz_size);
     pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] {bytes}/{total_bytes} ({eta})")
-    .unwrap()
+    ?
     .progress_chars("█  "));
 
     pb.set_message(format!("Decompressing {} to {}", path, new_filename));
@@ -87,11 +88,11 @@ fn decompress_bz(path: &str) -> Result<(u64, String), std::io::Error> {
     let mut decoder = BzDecoder::new(bz_file);
     let big_data_size = 1024 * 1024;
     let mut total_archive_size = 0 as u64;
-    let mut output_file = File::create(new_filename).unwrap();
+    let mut output_file = File::create(new_filename)?;
 
     loop {
         let mut read_buffer = vec![0; big_data_size];
-        let data_len = decoder.read(&mut read_buffer).unwrap() as u64;
+        let data_len = decoder.read(&mut read_buffer)? as u64;
         total_archive_size += data_len;
         if big_data_size > data_len as usize {
             read_buffer.resize(data_len as usize, 0);
@@ -108,35 +109,45 @@ fn decompress_bz(path: &str) -> Result<(u64, String), std::io::Error> {
     Ok((total_archive_size, new_filename.to_string()))
 }
 
-fn decompress_tar(path: &str, initial_size: u64) -> Result<(), std::io::Error> {
+fn decompress_tar(path: &str, initial_size: u64) -> Result<(),  Box<dyn Error>> {
     let tar = File::open(path)?;
     let mut archive = Archive::new(tar);
 
     let pb = ProgressBar::new(initial_size);
     pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] {bytes}/{total_bytes} ({eta})")
-    .unwrap()
-    .progress_chars("█  "));
+    ?.progress_chars("█  "));
 
     pb.set_message(format!("Unpacking to folder"));
 
-    archive.entries().unwrap().for_each(|entry| {
+    archive.entries()?.for_each(|entry| {
         let mut entry_value = entry.unwrap();
-        entry_value.unpack_in(".").unwrap();
+        entry_value.unpack_in(".").err();
         pb.set_position(entry_value.raw_header_position() as u64);
     });
     pb.finish();
     Ok(())
 }
 
+pub async fn exec() ->Result<(), Box<dyn Error>> {
+    //let filename = "gutenberg.tar.bz2";
+
+    /*download_file(&Client::new(), "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2", "gutenberg.tar.bz2").await?;
+    let (total_archive_size, bz_filename) = decompress_bz(filename)?;
+    decompress_tar(bz_filename.as_str(), total_archive_size)?;*/
+    let folder = Path::new("cache").join("epub");
+    let parse_result = xml_parser::parse_xml(&folder)?;
+    let mut cache = sqlite_cache::SQLiteCache::default();
+    cache.create_cache(&parse_result)?;
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
-    /*let filename = "gutenberg.tar.bz2";
-
-    download_file(&Client::new(), "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2", "gutenberg.tar.bz2").await.unwrap();
-    let (total_archive_size, bz_filename) = decompress_bz(filename).unwrap();
-    decompress_tar(bz_filename.as_str(), total_archive_size).unwrap();*/
-    let folder = Path::new("cache").join("epub");
-    let parse_result = xml_parser::parse_xml(&folder);
-    let mut cache = sqlite_cache::SQLiteCache::default();
-    cache.create_cache(&parse_result);
+    match exec().await {
+        Ok(_) => (),
+        Err(ex) => {
+            println!("ERROR = {}", ex);
+            return;
+        }
+    }
 }

@@ -19,14 +19,14 @@ impl Book {
     fn get_str(ids: &Vec<usize>, parse_type: ParseType, parse_result: &ParseResult) -> String {
         ids
         .iter()
-        .map(|x|  parse_result.data[parse_type as usize][*x].clone())
+        .map(|x|  parse_result.field_dictionaries[parse_type as usize].get_index(*x).unwrap().0.to_string())
         .collect::<Vec<_>>()
         .join("|")
     }
 
     fn get_str_single(id: i32, parse_type: ParseType, parse_result: &ParseResult) -> String {
         if id >= 0 {
-            return parse_result.data[parse_type as usize][id as usize].clone();
+            return parse_result.field_dictionaries[parse_type as usize].get_index(id as usize).unwrap().0.to_string();
         }
         "".to_string()
     }

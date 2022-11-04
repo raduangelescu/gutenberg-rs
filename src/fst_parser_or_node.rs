@@ -1,6 +1,7 @@
-use crate::fst_parser::{FSTParser, ParseItemResult, ParseResult, ParseError};
+use crate::fst_parser::{FSTParser, ParseItemResult, ParseResult};
 use crate::fst_parser_type::{ParseType};
 use crate::fst_parser_node::{FSTParserNode};
+use crate::error::{ParseError};
 use std::str;
 
 pub struct FSTParserOrNode {
@@ -9,9 +10,9 @@ pub struct FSTParserOrNode {
 }
 
 impl FSTParser for FSTParserOrNode {
-    fn text(&mut self, text: &str, parse_result:&mut ParseResult) {
+    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32) {
         for node in &mut self.nodes {
-            node.text(text, parse_result);
+            node.text(text, parse_result, book_id);
         }
     }
 
@@ -21,7 +22,7 @@ impl FSTParser for FSTParserOrNode {
         }
     }
 
-    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult) {}
+    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult, book_id: i32) {}
     
     fn start_node(&mut self, node_name: &str) {
         for node in &mut self.nodes {
@@ -63,7 +64,7 @@ impl FSTParser for FSTParserOrNode {
                 return node.get_result()
             }
         }
-        Err(ParseError)
+        Err(ParseError::InvalidResult("no results".to_string()))
     }
 }
 

@@ -1,6 +1,6 @@
 use fast_xml::events::Event;
 use fast_xml::Reader;
-use indexmap::IndexSet;
+use indexmap::IndexMap;
 use std::borrow::Borrow;
 use std::fs;
 use std::path::PathBuf;
@@ -15,30 +15,31 @@ use crate::fst_parser::FSTParser;
 use crate::book::Book;
 use crate::fst_parser::ParseResult;
 use crate::fst_parser::ParseItemResult;
+use std::error::Error;
 
-fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, out:&mut ParseResult) -> usize {
-    let mut reader = Reader::from_file(path).unwrap();
+fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, book_id:usize , out:&mut ParseResult) ->Result<usize, Box<dyn Error>> {
+    let mut reader = Reader::from_file(path)?;
     let mut buf = Vec::new();
-    let mut book_id:usize = 0;
+    let mut gutenberg_book_id:usize = 0;
    
     loop {
         reader.trim_text(true);
 
         match reader.read_event(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                let current_node_name = str::from_utf8(e.name()).unwrap();
+                let current_node_name = str::from_utf8(e.name())?;
                 if current_node_name.eq("rdf::RDF") {
                     continue;
                 }
                 
                 if current_node_name.eq("pgterms:ebook") {
                     for attr in e.attributes() {
-                        let attr_val = attr.unwrap();
+                        let attr_val = attr?;
                         if attr_val.key.eq(b"rdf:about") {
-                            let str_book_id = str::from_utf8(attr_val.value.borrow()).unwrap();
+                            let str_book_id = str::from_utf8(attr_val.value.borrow())?;
                             let splits = str_book_id.split("/").collect::<Vec<&str>>();
                             assert!(splits.len() == 2);
-                            book_id = splits[1].parse::<usize>().unwrap();
+                            gutenberg_book_id = splits[1].parse::<usize>()?;
                         }
                     }
                     continue;
@@ -47,16 +48,16 @@ fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, out:&m
                 for check in field_parsers.iter_mut() {
                     check.start_node(current_node_name);
                     for attr in e.attributes() {
-                        let a = attr.unwrap();
-                        let value = str::from_utf8(a.value.borrow()).unwrap();
-                        let key = str::from_utf8(a.key.borrow()).unwrap();
-                        check.attribute(&key, &value, out);
+                        let a = attr?;
+                        let value = str::from_utf8(a.value.borrow())?;
+                        let key = str::from_utf8(a.key.borrow())?;
+                        check.attribute(&key, &value, out, book_id as i32);
                     }    
                 }
             }
 
             Ok(Event::End(ref e)) => {
-                let current_node_name = str::from_utf8(e.name()).unwrap();
+                let current_node_name = str::from_utf8(e.name())?;
                 for check in field_parsers.iter_mut() {
                     check.end_node(current_node_name);
                 }
@@ -64,7 +65,7 @@ fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, out:&m
 
             Ok(Event::Text(ref e)) => {
                 for check in field_parsers.iter_mut() {
-                    check.text(e.unescape_and_decode(&reader).unwrap().as_str(), out);
+                    check.text(e.unescape_and_decode(&reader)?.as_str(), out, book_id as i32);
                 }
             }
 
@@ -78,14 +79,14 @@ fn parse_rdf(path: &PathBuf, field_parsers: &mut Vec<Box<dyn FSTParser>>, out:&m
     check_single(&field_parsers[ParseType::Rights as usize]);
     check_single(&field_parsers[ParseType::DateIssued as usize]);
     check_single(&field_parsers[ParseType::Downloads as usize]);*/
-    return book_id;
+    return Ok(book_id);
 }
 
-pub fn parse_xml(folder_path: &PathBuf) -> ParseResult {
-    let paths = fs::read_dir(folder_path).unwrap();
+pub fn parse_xml(folder_path: &PathBuf) -> Result<ParseResult, Box<dyn Error>> {
+    let paths = fs::read_dir(folder_path)?;
     let mut parse_result : ParseResult = ParseResult {
         books : Vec::new(),
-        data : Vec::new(),
+        field_dictionaries : Vec::new(),
     };
     let mut field_parsers = vec![
         FSTParserOrNode::build(vec![
@@ -127,13 +128,14 @@ pub fn parse_xml(folder_path: &PathBuf) -> ParseResult {
     ];
 
     for _ in  &field_parsers {
-        parse_result.data.push(IndexSet::new());
+        parse_result.field_dictionaries.push(IndexMap::new());
     }
-    let all_paths = paths.collect::<Vec<_>>();
+    let mut all_paths = paths.collect::<Vec<_>>();
+    all_paths.truncate(10);
+
     let pb = ProgressBar::new(all_paths.len() as u64);
     pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})")
-    .unwrap()
-    .progress_chars("█  "));
+    ?.progress_chars("█  "));
 
     pb.set_message(format!("Parsing rdf"));
     let mut idx = 0;
@@ -141,10 +143,10 @@ pub fn parse_xml(folder_path: &PathBuf) -> ParseResult {
         idx = idx + 1;
         pb.set_position( idx as u64);
         
-        let path_value = path.unwrap();
-        let file_paths = fs::read_dir(path_value.path()).unwrap();
+        let path_value = path?;
+        let file_paths = fs::read_dir(path_value.path())?;
         for file_path in file_paths {
-            let book_id = parse_rdf(&file_path.unwrap().path(), &mut field_parsers, &mut parse_result);
+            let book_id = parse_rdf(&file_path?.path(), &mut field_parsers, idx,&mut parse_result)?;
             let publisher_id = match field_parsers[ParseType::Publisher as usize].get_result() {
                     Ok(item) => item.item_links[0] as i32,
                     Err(_) => -1
@@ -191,8 +193,10 @@ pub fn parse_xml(folder_path: &PathBuf) -> ParseResult {
                 title_id,
                 rights_id,
                 gutenberg_book_id : book_id,
-                date_issued : parse_result.data[ParseType::DateIssued as usize][date_id as usize].clone(),
-                num_downloads : parse_result.data[ParseType::Downloads as usize][down_id as usize].parse::<i32>().unwrap(),
+                date_issued : parse_result.field_dictionaries[ParseType::DateIssued as usize]
+                                .get_index(date_id as usize).unwrap().0.to_string(),
+                num_downloads : parse_result.field_dictionaries[ParseType::Downloads as usize]
+                                .get_index(down_id as usize).unwrap().0.parse::<i32>()?,
                 
                 language_ids,
                 subject_ids,
@@ -205,5 +209,5 @@ pub fn parse_xml(folder_path: &PathBuf) -> ParseResult {
         }
     }
     pb.finish();
-    parse_result
+    Ok(parse_result)
 }

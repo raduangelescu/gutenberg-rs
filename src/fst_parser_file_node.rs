@@ -1,5 +1,6 @@
 use crate::fst_parser_type::ParseType;
-use crate::fst_parser::{FSTParser, ParseResult, ParseItemResult, ParseError};
+use crate::fst_parser::{FSTParser, ParseResult, ParseItemResult};
+use crate::error::{ParseError};
 
 use std::str;
 
@@ -14,10 +15,10 @@ pub(crate) struct FSTParserFileNode {
 }
 
 impl FSTParser for FSTParserFileNode {
-    fn text(&mut self, text: &str, parse_result:&mut ParseResult) {
+    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32) {
         if self.is_found() {
             self.has_node = true;
-            self.result_files.add(parse_result, self.parse_type, text.to_string());
+            self.result_files.add(parse_result, self.parse_type, text.to_string(), book_id);
         }
     }
 
@@ -28,7 +29,7 @@ impl FSTParser for FSTParserFileNode {
         self.result_files.reset();
     }
 
-    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult) {
+    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult, book_id: i32) {
             if !self.is_found() {
                 return;
             }
@@ -38,7 +39,7 @@ impl FSTParser for FSTParserFileNode {
             }
 
             let value = attribute_value;
-            self.result_file_links.add(parse_result, self.parse_type, value.to_string());
+            self.result_file_links.add(parse_result, self.parse_type, value.to_string(), book_id);
     }
     
 

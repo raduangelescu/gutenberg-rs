@@ -1,17 +1,9 @@
 use crate::fst_parser_type::ParseType;
-
-use indexmap::IndexSet;
+use crate::error::ParseError;
+use indexmap::IndexMap;
 use crate::book::Book;
-use std::fmt;
-
-#[derive(Debug, Clone)]
-pub struct ParseError;
-
-impl fmt::Display for ParseError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "invalid first item to double")
-    }
-}
+use std::borrow::Borrow;
+use std::error::Error;
 
 #[derive(Default)]
 pub struct ParseItemResult {
@@ -19,26 +11,53 @@ pub struct ParseItemResult {
 }
 
 impl ParseItemResult {
-    pub fn add(&mut self, parse_result:&mut ParseResult, parse_type: ParseType, data: String) {
-        let data_idx = parse_result.data[parse_type as usize].insert_full(data);
-        self.item_links.push(data_idx.0);
+    pub fn add(&mut self, parse_result:&mut ParseResult, parse_type: ParseType, data: String, book_id: i32) -> Result<(), Box<dyn Error>> {
+        let data_idx = parse_result.add_field(parse_type, data, book_id)?;
+        self.item_links.push(data_idx);
+        Ok(())
     }
+
     pub fn reset(&mut self) {
         self.item_links.clear();
     }
 }
 
+pub struct DictionaryItemContent {
+    pub book_links : Vec<usize>,
+}
+
+
 #[derive(Default)]
 pub struct ParseResult {
     pub books : Vec<Book>,
-    pub data : Vec<IndexSet<String>>,
+    pub field_dictionaries : Vec<IndexMap<String, DictionaryItemContent>>,
 }
 
+impl ParseResult {
+    pub fn add_field(&mut self, field: ParseType, data: String, book_id : i32) -> Result<usize, ParseError> {
+        let mut map_entry = self.field_dictionaries[field as usize].get_full_mut(data.as_str());
+        if map_entry.is_none() {
+            let result = self.field_dictionaries[field as usize].insert_full(data, DictionaryItemContent {
+                book_links : vec![book_id as usize],
+            });
+            return Ok(result.0);
+        }
+        let mut data_idx = 0;
+        match map_entry {
+            Some(data) => { 
+                data_idx = data.0;
+                data.2.book_links.push(book_id as usize);
+            }
+            None => { return Err(ParseError::InvalidResult("bad data".to_string()));}
+        }
+        Ok(data_idx)
+    }
+}
 pub trait FSTParser {
-    fn text(&mut self, text: &str, parse_result:&mut ParseResult);
+    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32);
     fn reset(&mut self);
     fn start_node(&mut self, text: &str);
-    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult);
+    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult, book_id: i32);
     fn end_node(&mut self, node_name: &str);
     fn is_found(&self) -> bool;
     fn has_results(&self) -> bool;

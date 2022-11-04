@@ -1,5 +1,6 @@
 use crate::fst_parser_type::ParseType;
-use crate::fst_parser::{FSTParser, ParseItemResult, ParseResult, ParseError};
+use crate::fst_parser::{FSTParser, ParseItemResult, ParseResult};
+use crate::error::{ParseError};
 
 use std::str;
 
@@ -12,10 +13,11 @@ pub struct FSTParserNode {
 }
 
 impl FSTParser for FSTParserNode {
-    fn text(&mut self, text: &str, parse_result:&mut ParseResult) {
+    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32) {
         if self.is_found() {
             self.has_result = true;
-            self.result.add(parse_result, self.parse_type, text.to_string());
+
+            self.result.add(parse_result, self.parse_type, text.to_string(), book_id);
         }
     }
 
@@ -25,7 +27,7 @@ impl FSTParser for FSTParserNode {
         self.result.reset();
     }
 
-    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult) {}
+    fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult, book_id: i32) {}
 
     fn start_node(&mut self, node_name: &str) {
         if self.pos == -1 && node_name.eq(&self.states[0]) {
