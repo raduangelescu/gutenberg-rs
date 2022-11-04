@@ -7,6 +7,7 @@ use indexmap::IndexMap;
 use rusqlite::Connection;
 use std::error::Error;
 use std::fs;
+use std::path::Path;
 
 pub struct SQLiteCache {
     sqlite_db_create_cache_filename : String,
@@ -27,7 +28,9 @@ impl Default for SQLiteCache {
 
 impl DBCache for SQLiteCache {
     fn create_cache(&mut self, parse_results: &ParseResult) ->Result<(), Box<dyn Error>> {
-        fs::remove_file(&self.sqlite_db_filename).expect("Cache is not present, creating");
+        if Path::new(&self.sqlite_db_filename).exists() {
+            fs::remove_file(&self.sqlite_db_filename)?;
+        }
         let mut connection = Connection::open(&self.sqlite_db_filename)?;
         let create_query = include_str!("gutenbergindex.db.sql");
         connection.execute_batch(create_query)?;
