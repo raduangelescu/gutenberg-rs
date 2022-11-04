@@ -6,6 +6,7 @@ use std::str;
 
 pub(crate) struct FSTParserFileNode {
     pos: i32,
+    attribute_states_idx: i32,
     states: Vec<String>,
     attribute: String,
     result_files: ParseItemResult,
@@ -16,10 +17,12 @@ pub(crate) struct FSTParserFileNode {
 
 impl FSTParser for FSTParserFileNode {
     fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32) {
-        if self.is_found() {
-            self.has_node = true;
-            self.result_files.add(parse_result, self.parse_type, text.to_string(), book_id);
+        if !self.is_found() {
+            return;
         }
+        self.has_node = true;
+        self.result_files.add(parse_result, self.parse_type, text.to_string(), book_id);
+    
     }
 
     fn reset(&mut self) {
@@ -30,7 +33,7 @@ impl FSTParser for FSTParserFileNode {
     }
 
     fn attribute(&mut self, attribute_name: &str, attribute_value: &str, parse_result:&mut ParseResult, book_id: i32) {
-            if !self.is_found() {
+            if self.attribute_states_idx != self.pos {
                 return;
             }
         
@@ -96,6 +99,7 @@ impl FSTParserFileNode {
             result_files : Default::default(),
             result_file_links : Default::default(),
             attribute: attribute.to_string(),
+            attribute_states_idx: 1,
         })
     }
 }
