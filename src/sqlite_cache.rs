@@ -38,26 +38,26 @@ impl DBCache for SQLiteCache {
         connection.execute_batch("PRAGMA journal_mode = OFF;PRAGMA synchronous = 0;PRAGMA cache_size = 1000000;PRAGMA locking_mode = EXCLUSIVE;PRAGMA temp_store = MEMORY;");
         let mut book_id = 0;
         let pb_fields = ProgressBar::new(parse_results.field_dictionaries.len() as u64);
-        pb_fields.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] {bytes}/{total_bytes} ({eta})")
+        pb_fields.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})")
         ?.progress_chars("█  "));
 
         for (idx,  result) in parse_results.field_dictionaries.iter().enumerate() {
             book_id = book_id + 1;
-            pb_fields.set_position(idx as u64);
+            pb_fields.set_position((idx + 1) as u64);
             
             match FromPrimitive::from_usize(idx) {
                 Some(ParseType::Title) => {
-                    pb_fields.set_message("titles");
+                    pb_fields.set_message("Fields titles");
                     SQLiteCache::insert_many_field_id(&mut connection,
                         "titles",
                         "name",
                         "bookid",
-                        result, 
+                        result,
                         book_id)?;
                         
                     }
                 Some(ParseType::Subject) => {
-                    pb_fields.set_message("subjects");
+                    pb_fields.set_message("Fields subjects");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "subjects",
                         "name",
@@ -65,21 +65,21 @@ impl DBCache for SQLiteCache {
                     
                 },
                 Some(ParseType::Language) => {
-                    pb_fields.set_message("language");
+                    pb_fields.set_message("Fields language");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "languages",
                         "name",
                     result)?;
                 },
                 Some(ParseType::Author) => {
-                    pb_fields.set_message("author");
+                    pb_fields.set_message("Fields author");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "authors",
                         "name",
                     result)?;
                 },
                 Some(ParseType::Bookshelf) => {
-                    pb_fields.set_message("bookshelf");
+                    pb_fields.set_message("Fields bookshelf");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "bookshelves",
                         "name",
@@ -87,14 +87,14 @@ impl DBCache for SQLiteCache {
                 },
                 Some(ParseType::Files) => {},
                 Some(ParseType::Publisher) => {
-                    pb_fields.set_message("publisher");
+                    pb_fields.set_message("Fields publisher");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "publishers",
                         "name",
                     result)?;
                 },
                 Some(ParseType::Rights) => {
-                    pb_fields.set_message("rights");
+                    pb_fields.set_message("Fields rights");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "rights",
                         "name",
@@ -106,12 +106,13 @@ impl DBCache for SQLiteCache {
             }
             
         }
+        pb_fields.finish();
         SQLiteCache::insert_many_fields(&mut connection,
             "downloadlinkstype",
             "name", &parse_results.file_types_dictionary)?;
         
         let pb = ProgressBar::new(parse_results.books.len() as u64);
-        pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] {bytes}/{total_bytes} ({eta})")
+        pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})")
         ?.progress_chars("█  "));
         
         pb.set_message(format!("Building sqlite db"));
@@ -140,6 +141,7 @@ impl DBCache for SQLiteCache {
             , (book.publisher_id, book.date_issued.clone(), book.rights_id,
             book.num_downloads,book.gutenberg_book_id))?;
         }
+        pb.finish();
         Ok(())
     }
     fn query(&self) -> Result<(), Box<dyn Error>> {
