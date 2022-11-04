@@ -8,6 +8,7 @@ use rusqlite::Connection;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
+use indicatif::{ProgressBar, ProgressStyle};
 
 pub struct SQLiteCache {
     sqlite_db_create_cache_filename : String,
@@ -34,39 +35,51 @@ impl DBCache for SQLiteCache {
         let mut connection = Connection::open(&self.sqlite_db_filename)?;
         let create_query = include_str!("gutenbergindex.db.sql");
         connection.execute_batch(create_query)?;
-
+        connection.execute_batch("PRAGMA journal_mode = OFF;PRAGMA synchronous = 0;PRAGMA cache_size = 1000000;PRAGMA locking_mode = EXCLUSIVE;PRAGMA temp_store = MEMORY;");
         let mut book_id = 0;
-        
+        let pb_fields = ProgressBar::new(parse_results.field_dictionaries.len() as u64);
+        pb_fields.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] {bytes}/{total_bytes} ({eta})")
+        ?.progress_chars("█  "));
+
         for (idx,  result) in parse_results.field_dictionaries.iter().enumerate() {
             book_id = book_id + 1;
+            pb_fields.set_position(idx as u64);
+            
             match FromPrimitive::from_usize(idx) {
                 Some(ParseType::Title) => {
+                    pb_fields.set_message("titles");
                     SQLiteCache::insert_many_field_id(&mut connection,
                         "titles",
                         "name",
                         "bookid",
                         result, 
                         book_id)?;
+                        
                     }
                 Some(ParseType::Subject) => {
+                    pb_fields.set_message("subjects");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "subjects",
                         "name",
                     result)?;
+                    
                 },
                 Some(ParseType::Language) => {
+                    pb_fields.set_message("language");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "languages",
                         "name",
                     result)?;
                 },
                 Some(ParseType::Author) => {
+                    pb_fields.set_message("author");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "authors",
                         "name",
                     result)?;
                 },
                 Some(ParseType::Bookshelf) => {
+                    pb_fields.set_message("bookshelf");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "bookshelves",
                         "name",
@@ -74,12 +87,14 @@ impl DBCache for SQLiteCache {
                 },
                 Some(ParseType::Files) => {},
                 Some(ParseType::Publisher) => {
+                    pb_fields.set_message("publisher");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "publishers",
                         "name",
                     result)?;
                 },
                 Some(ParseType::Rights) => {
+                    pb_fields.set_message("rights");
                     SQLiteCache::insert_many_fields(&mut connection,
                         "rights",
                         "name",
@@ -95,7 +110,14 @@ impl DBCache for SQLiteCache {
             "downloadlinkstype",
             "name", &parse_results.file_types_dictionary)?;
         
+        let pb = ProgressBar::new(parse_results.books.len() as u64);
+        pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] {bytes}/{total_bytes} ({eta})")
+        ?.progress_chars("█  "));
+        
+        pb.set_message(format!("Building sqlite db"));
+
         for (idx, book) in parse_results.books.iter().enumerate() {
+            pb.set_position(idx as u64);
             let pairs_book_authors = book.author_ids.iter().map(|x| (*x + 1, idx + 1)).collect::<Vec<(usize, usize)>>();
             let pairs_book_subjects = book.subject_ids.iter().map(|x| (*x + 1, idx + 1)).collect::<Vec<(usize, usize)>>();
             let pairs_book_languages = book.language_ids.iter().map(|x| (*x + 1, idx + 1)).collect::<Vec<(usize, usize)>>();
@@ -113,8 +135,7 @@ impl DBCache for SQLiteCache {
                 let file_link = parse_results.files_dictionary.get_index(item.file_link_id as usize).unwrap().0;
                 smt.execute([file_link, item.file_type_id.to_string().as_str(), idx.to_string().as_str()])?;
             }
-            connection.flush_prepared_statement_cache();
-
+        
             connection.execute("INSERT OR IGNORE INTO books(publisherid,dateissued,rightsid,numdownloads,gutenbergbookid) VALUES (?,?,?,?,?)"
             , (book.publisher_id, book.date_issued.clone(), book.rights_id,
             book.num_downloads,book.gutenberg_book_id))?;
@@ -140,7 +161,6 @@ impl SQLiteCache {
         for item in links.iter() {
             smt.execute([item.0.to_string(), item.1.to_string()])?;
         }
-        connection.flush_prepared_statement_cache();
         Ok(())
     }
     fn insert_many_fields(connection: &mut Connection, table: &str, field: &str, field_dictionary: &IndexMap<String, DictionaryItemContent>) -> Result<(), Box<dyn Error>>{
@@ -154,7 +174,6 @@ impl SQLiteCache {
         for item in field_dictionary.iter() {
             smt.execute([item.0.as_str().as_bytes()])?;
         }
-        connection.flush_prepared_statement_cache();
         Ok(())
     }
 
@@ -171,7 +190,6 @@ impl SQLiteCache {
                 smt.execute([item.0.as_str(), book_id.to_string().as_str()])?;
             }
         }
-        connection.flush_prepared_statement_cache();
         Ok(())
     }
 }

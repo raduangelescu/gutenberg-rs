@@ -129,11 +129,11 @@ fn decompress_tar(path: &str, initial_size: u64) -> Result<(),  Box<dyn Error>> 
 }
 
 pub async fn exec() ->Result<(), Box<dyn Error>> {
-    let filename = "gutenberg.tar.bz2";
+    /*let filename = "gutenberg.tar.bz2";
 
     download_file(&Client::new(), "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2", "gutenberg.tar.bz2").await?;
     let (total_archive_size, bz_filename) = decompress_bz(filename)?;
-    decompress_tar(bz_filename.as_str(), total_archive_size)?;
+    decompress_tar(bz_filename.as_str(), total_archive_size)?;*/
     let folder = Path::new("cache").join("epub");
     let parse_result = xml_parser::parse_xml(&folder)?;
     let mut cache = sqlite_cache::SQLiteCache::default();
