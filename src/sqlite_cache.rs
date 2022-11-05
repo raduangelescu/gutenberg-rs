@@ -11,10 +11,6 @@ use std::path::Path;
 use indicatif::{ProgressBar, ProgressStyle};
 
 pub struct SQLiteCache {
-    #[allow(dead_code)]
-    sqlite_db_create_cache_filename : String,
-    #[allow(dead_code)]
-    sqlite_db_create_indices_filename : String,
     sqlite_db_filename : String,
 }
 
@@ -22,8 +18,6 @@ impl Default for SQLiteCache {
     fn default() -> SQLiteCache {
     
         SQLiteCache {
-            sqlite_db_create_cache_filename : String::from("gutenbergindex.db.sql"),
-            sqlite_db_create_indices_filename :  String::from("gutenbergindex_indices.db.sql"),
             sqlite_db_filename : String::from("gutenberg-rs.db"),
         }
     }
@@ -143,6 +137,9 @@ impl DBCache for SQLiteCache {
             , (book.publisher_id, book.date_issued.clone(), book.rights_id,
             book.num_downloads,book.gutenberg_book_id))?;
         }
+        let create_query = include_str!("gutenbergindex_indices.db.sql");
+        connection.execute_batch(create_query)?;
+        
         pb.finish();
         Ok(())
     }

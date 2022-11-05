@@ -147,7 +147,6 @@ async fn main() {
         Ok(_) => (),
         Err(ex) => {
             println!("ERROR = {}", ex);
-            
             return;
         }
     }

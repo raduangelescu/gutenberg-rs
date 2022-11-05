@@ -6,8 +6,6 @@ CREATE INDEX `gutenbergbookid_idx` ON `books` (`gutenbergbookid` ASC);
 
 CREATE INDEX `authors_name_idx` ON `authors` (`name` ASC);
 
-CREATE INDEX `types_name_idx` ON `types` (`name` ASC);
-
 CREATE INDEX `titles_name_idx` ON `titles` (`name` ASC);
 
 CREATE INDEX `subjects_name_idx` ON `subjects` (`name` ASC);
