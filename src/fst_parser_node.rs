@@ -1,7 +1,7 @@
-use crate::fst_parser_type::ParseType;
-use crate::fst_parser::{FSTParser, ParseItemResult, ParseResult};
-use crate::error::{ParseError};
 use crate::book::GutenbergFileEntry;
+use crate::error::ParseError;
+use crate::fst_parser::{FSTParser, ParseItemResult, ParseResult};
+use crate::fst_parser_type::ParseType;
 use std::error::Error;
 
 use std::str;
@@ -15,13 +15,19 @@ pub struct FSTParserNode {
 }
 
 impl FSTParser for FSTParserNode {
-    fn text(&mut self, text: &str, parse_result:&mut ParseResult, book_id: i32) -> Result<(), Box<dyn Error>> {
+    fn text(
+        &mut self,
+        text: &str,
+        parse_result: &mut ParseResult,
+        book_id: i32,
+    ) -> Result<(), Box<dyn Error>> {
         if !self.is_found() {
             return Ok(());
         }
         self.has_result = true;
 
-        self.result.add(parse_result, self.parse_type, text.to_string(), book_id)?;
+        self.result
+            .add(parse_result, self.parse_type, text.to_string(), book_id)?;
         Ok(())
     }
 
@@ -31,7 +37,14 @@ impl FSTParser for FSTParserNode {
         self.result.reset();
     }
 
-    fn attribute(&mut self, _attribute_name: &str, _attribute_value: &str, _parse_result:&mut ParseResult, _book_id: i32) {}
+    fn attribute(
+        &mut self,
+        _attribute_name: &str,
+        _attribute_value: &str,
+        _parse_result: &mut ParseResult,
+        _book_id: i32,
+    ) {
+    }
 
     fn start_node(&mut self, node_name: &str) {
         if self.pos == -1 && node_name.eq(&self.states[0]) {
@@ -71,9 +84,9 @@ impl FSTParser for FSTParserNode {
     fn get_result(&self) -> Result<&ParseItemResult, ParseError> {
         Ok(&self.result)
     }
-    
-    fn get_files(&self) ->  Result<Vec<GutenbergFileEntry>, ParseError> {
-        Err(ParseError::InvalidResult("no results".to_string()))        
+
+    fn get_files(&self) -> Result<Vec<GutenbergFileEntry>, ParseError> {
+        Err(ParseError::InvalidResult("no results".to_string()))
     }
 }
 
@@ -85,8 +98,7 @@ impl FSTParserNode {
             states,
             has_result: false,
             parse_type,
-            result : Default::default(),
+            result: Default::default(),
         })
     }
 }
-

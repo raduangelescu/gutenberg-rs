@@ -4,22 +4,22 @@ use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
 use std::cmp::min;
+use std::error::Error;
 use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
 use tar::Archive;
-use std::error::Error;
 
-mod xml_parser;
+mod book;
+mod db_cache;
+mod error;
 mod fst_parser;
+mod fst_parser_file_node;
 mod fst_parser_node;
 mod fst_parser_or_node;
-mod fst_parser_file_node;
 mod fst_parser_type;
-mod db_cache;
 mod sqlite_cache;
-mod book;
-mod error;
+mod xml_parser;
 
 pub async fn download_file(client: &Client, url: &str, path: &str) -> Result<(), String> {
     let res = client
@@ -73,7 +73,7 @@ pub async fn download_file(client: &Client, url: &str, path: &str) -> Result<(),
     return Ok(());
 }
 
-fn decompress_bz(path: &str) -> Result<(u64, String),  Box<dyn Error>> {
+fn decompress_bz(path: &str) -> Result<(u64, String), Box<dyn Error>> {
     let bz_file = File::open(path)?;
     let bz_size = bz_file.metadata().unwrap().len();
     let new_filename = &path[..path.len() - 3];
@@ -109,7 +109,7 @@ fn decompress_bz(path: &str) -> Result<(u64, String),  Box<dyn Error>> {
     Ok((total_archive_size, new_filename.to_string()))
 }
 
-fn decompress_tar(path: &str, initial_size: u64) -> Result<(),  Box<dyn Error>> {
+fn decompress_tar(path: &str, initial_size: u64) -> Result<(), Box<dyn Error>> {
     let tar = File::open(path)?;
     let mut archive = Archive::new(tar);
 
@@ -128,12 +128,17 @@ fn decompress_tar(path: &str, initial_size: u64) -> Result<(),  Box<dyn Error>> 
     Ok(())
 }
 
-pub async fn exec() ->Result<(), Box<dyn Error>> {
-  /*  let filename = "gutenberg.tar.bz2";
+pub async fn exec() -> Result<(), Box<dyn Error>> {
+    let filename = "gutenberg.tar.bz2";
 
-    download_file(&Client::new(), "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2", "gutenberg.tar.bz2").await?;
+    download_file(
+        &Client::new(),
+        "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2",
+        "gutenberg.tar.bz2",
+    )
+    .await?;
     let (total_archive_size, bz_filename) = decompress_bz(filename)?;
-    decompress_tar(bz_filename.as_str(), total_archive_size)?;*/
+    decompress_tar(bz_filename.as_str(), total_archive_size)?;
     let folder = Path::new("cache").join("epub");
     let parse_result = xml_parser::parse_xml(&folder)?;
     let mut cache = sqlite_cache::SQLiteCache::default();

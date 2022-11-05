@@ -1,5 +1,5 @@
+use num_derive::FromPrimitive;
 use std::fmt;
-use num_derive::FromPrimitive;    
 
 #[derive(Debug, Clone, Copy, FromPrimitive)]
 pub enum ParseType {
