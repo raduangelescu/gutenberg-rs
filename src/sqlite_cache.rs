@@ -13,7 +13,10 @@ use std::path::Path;
 pub struct SQLiteCache {
     sqlite_db_filename: String,
 }
-
+pub struct HelperQuery <'a> {
+    tables : Vec<&'a str>,
+    query_struct : Vec<&'a str>,
+}
 impl Default for SQLiteCache {
     fn default() -> SQLiteCache {
         SQLiteCache {
@@ -189,8 +192,69 @@ impl DBCache for SQLiteCache {
         pb.finish();
         Ok(())
     }
-    fn query(&self) -> Result<(), Box<dyn Error>> {
-        Ok(())
+    fn query(&self, kwargs: IndexMap::<&str, Vec<&str>>) -> Result<(), Box<dyn Error>> {
+        let helpers= vec![
+            HelperQuery{tables : vec!["languages"], 
+                        query_struct: vec!["languages.id = books.languageid", 
+                        "languages.name",
+                        kwargs["languages"]]},
+            HelperQuery{tables : vec!["authors", "book_authors"],
+                        query_struct: vec!["authors.id = book_authors.authorid and books.id = book_authors.bookid",
+                         "authors.name",
+                         kwargs["authors"]]},
+            HelperQuery{tables: vec!["types"],
+                        query_struct: vec!["books.typeid = types.id", "types.name",
+                         kwargs["types"]]},
+            HelperQuery{tables: vec!["titles"],
+                        query_struct: vec!["titles.bookid = books.id", 
+                        "titles.name",
+                        kwargs["titles"]]},
+            HelperQuery{tables: vec!["subjects", "book_subjects"],
+                        query_struct: vec!["subjects.id = book_subjects.bookid and books.id = book_subjects.subjectid ", 
+                        "subjects.name",
+                         kwargs["subjects"]]},
+            HelperQuery{tables: vec!["publishers"],
+                        query_struct: vec!["publishers.id = books.publisherid",
+                        "publishers.name",
+                        kwargs["publishers"]]},
+            HelperQuery{tables: vec!["bookshelves"],
+                        query_struct: vec!["bookshelves.id = books.bookshelveid", 
+                        "bookshelves.name",
+                         kwargs["bookshelves"]]},
+            HelperQuery{tables: vec!["downloadlinks", "downloadlinkstype"],
+                        query_struct: vec!["downloadlinks.downloadtypeid =  downloadlinkstype.id and downloadlinks.bookid = books.id"
+                        , "downloadlinkstype.name"
+                        ,  kwargs["downloadtype"]]}
+        ];
+        let runtime  = helpers
+                                                        .into_iter()
+                                                        .filter(|x|  !x.query_struct[2].is_empty())
+                                                        .collect::<Vec<HelperQuery>>();
+
+
+        let mut query = "SELECT DISTINCT books.gutenbergbookid FROM books".to_string();
+        for q in runtime {   
+            query = format!("{},{}", query ,q.tables.join(","))
+        }
+
+        query = format!("{} WHERE ", query);
+    
+        for (idx, q) in runtime.iter().enumerate() {
+            query = format!("{} {} and {} in ({}) "
+            , query
+            , q.query_struct[0]
+            , q.query_struct[1]
+            , q.query_struct[2]);
+            if idx != runtime.len() - 1 {
+                query = format!("%s and ", query);
+            }
+        }
+        res = []
+        for row in self.native_query(query):
+            res.append(int(row[0]))
+
+        Ok(()
+    )
     }
     fn native_query(self, __query: &str) -> Result<(), Box<dyn Error>> {
         Ok(())
