@@ -46,10 +46,10 @@ impl ParseResult {
         match map_entry {
             Some(data) => { 
                 data.2.book_links.push(book_id as usize);
+                return Ok(data.0);
             }
             None => { return Err(ParseError::InvalidResult("bad data".to_string()));}
         }
-        Err(ParseError::InvalidResult("bad data".to_string()))
     }
     pub fn add_file(&mut self, data: String, book_id : i32) -> Result<usize, ParseError> {
         ParseResult::add(&mut self.files_dictionary, data, book_id)
