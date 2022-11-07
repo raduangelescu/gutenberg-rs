@@ -10,27 +10,121 @@ use std::error::Error;
 use std::fs;
 use std::path::Path;
 
-pub struct SQLiteCache {
+pub struct SQLiteCacheSettings {
     sqlite_db_filename: String,
+}
+pub struct SQLiteCache {
+    settings: SQLiteCacheSettings,
+    connection: Box<Connection>,
 }
 pub struct HelperQuery <'a> {
     tables : Vec<&'a str>,
     query_struct : Vec<&'a str>,
 }
-impl Default for SQLiteCache {
-    fn default() -> SQLiteCache {
-        SQLiteCache {
+impl Default for SQLiteCacheSettings {
+    fn default() -> SQLiteCacheSettings {
+        SQLiteCacheSettings {
             sqlite_db_filename: String::from("gutenberg-rs.db"),
         }
     }
 }
 
 impl DBCache for SQLiteCache {
-    fn create_cache(&mut self, parse_results: &ParseResult) -> Result<(), Box<dyn Error>> {
-        if Path::new(&self.sqlite_db_filename).exists() {
-            fs::remove_file(&self.sqlite_db_filename)?;
+
+    fn query(&mut self, kwargs: IndexMap::<&str, &str>) -> Result<(), Box<dyn Error>> {
+        let mut helpers= Vec::new();
+        if kwargs.contains_key("languages") {
+            helpers.push(HelperQuery{tables : vec!["languages"], 
+                        query_struct: vec!["languages.id = books.languageid", "languages.name",
+                        kwargs["languages"] ]});
         }
-        let mut connection = Connection::open(&self.sqlite_db_filename)?;
+        if kwargs.contains_key("authors") {
+            helpers.push(HelperQuery{tables : vec!["authors", "book_authors"],
+                        query_struct: vec!["authors.id = book_authors.authorid and books.id = book_authors.bookid","authors.name",
+                         kwargs["authors"]]});
+        }
+        if kwargs.contains_key("types") {
+            helpers.push(HelperQuery{tables: vec!["types"],
+                        query_struct: vec!["books.typeid = types.id", "types.name",
+                         kwargs["types"]]});
+        }
+        if kwargs.contains_key("types") {
+            helpers.push(HelperQuery{tables: vec!["titles"],
+                        query_struct: vec!["titles.bookid = books.id", 
+                        "titles.name",
+                        kwargs["titles"]]});
+        }
+        if kwargs.contains_key("subjects") {
+            helpers.push(HelperQuery{tables: vec!["subjects", "book_subjects"],
+                        query_struct: vec!["subjects.id = book_subjects.bookid and books.id = book_subjects.subjectid ", 
+                        "subjects.name",
+                         kwargs["subjects"]]});
+        }
+        if kwargs.contains_key("publishers") {
+            helpers.push(HelperQuery{tables: vec!["publishers"],
+                        query_struct: vec!["publishers.id = books.publisherid",
+                        "publishers.name",
+                        kwargs["publishers"]]});
+        }
+        if kwargs.contains_key("publishers") {
+            helpers.push(HelperQuery{tables: vec!["bookshelves"],
+                        query_struct: vec!["bookshelves.id = books.bookshelveid", 
+                        "bookshelves.name",
+                         kwargs["bookshelves"]]});
+        }
+        if kwargs.contains_key("publishers") {
+            helpers.push(HelperQuery{tables: vec!["downloadlinks", "downloadlinkstype"],
+                        query_struct: vec!["downloadlinks.downloadtypeid =  downloadlinkstype.id and downloadlinks.bookid = books.id"
+                        , "downloadlinkstype.name"
+                        ,  kwargs["downloadtype"]]});
+        }
+
+        let mut query = "SELECT DISTINCT books.gutenbergbookid FROM books".to_string();
+        for q in &helpers {   
+            query = format!("{},{}", query ,q.tables.join(","))
+        }
+
+        query = format!("{} WHERE ", query);
+        let mut idx = 0;
+        for q in &helpers {
+            query = format!("{} {} and {} in ({}) "
+            , query
+            , q.query_struct[0]
+            , q.query_struct[1]
+            , q.query_struct[2]);
+            if idx != helpers.len() - 1 {
+                query = format!("{} and ", query);
+            }
+            idx = idx + 1;
+        }
+        let mut res = Vec::new();
+        for row in &self.native_query(query.as_str()) {
+            res.push(row[0].clone());
+        }
+
+        Ok(())
+    }
+
+    fn native_query(&mut self, query: &str) -> Result<Vec<String>, Box<dyn Error>> {
+        let mut stmt = self.connection.prepare(query)?;
+
+        let results_iter = stmt.query_map((), |f| {
+            Ok(f.get(0)?)
+        })?;
+        let out = results_iter
+        .filter_map(|f|{Some(f.unwrap())})
+        .collect::<Vec<String>>();
+       
+        Ok(out)
+    }
+}
+
+impl SQLiteCache {
+    pub fn create_cache(parse_results: &ParseResult, cache_settings: SQLiteCacheSettings) -> Result<SQLiteCache, Box<dyn Error>> {
+        if Path::new(&cache_settings.sqlite_db_filename).exists() {
+            fs::remove_file(&cache_settings.sqlite_db_filename)?;
+        }
+        let mut connection = Box::new(Connection::open(&cache_settings.sqlite_db_filename)?);
         let create_query = include_str!("gutenbergindex.db.sql");
         connection.execute_batch(create_query)?;
         connection.execute_batch("PRAGMA journal_mode = OFF;PRAGMA synchronous = 0;PRAGMA cache_size = 1000000;PRAGMA locking_mode = EXCLUSIVE;PRAGMA temp_store = MEMORY;")?;
@@ -190,78 +284,10 @@ impl DBCache for SQLiteCache {
         connection.execute_batch(create_query)?;
 
         pb.finish();
-        Ok(())
+
+        Ok(SQLiteCache{connection, settings: cache_settings})
     }
-    fn query(&self, kwargs: IndexMap::<&str, Vec<&str>>) -> Result<(), Box<dyn Error>> {
-        let helpers= vec![
-            HelperQuery{tables : vec!["languages"], 
-                        query_struct: vec!["languages.id = books.languageid", 
-                        "languages.name",
-                        kwargs["languages"]]},
-            HelperQuery{tables : vec!["authors", "book_authors"],
-                        query_struct: vec!["authors.id = book_authors.authorid and books.id = book_authors.bookid",
-                         "authors.name",
-                         kwargs["authors"]]},
-            HelperQuery{tables: vec!["types"],
-                        query_struct: vec!["books.typeid = types.id", "types.name",
-                         kwargs["types"]]},
-            HelperQuery{tables: vec!["titles"],
-                        query_struct: vec!["titles.bookid = books.id", 
-                        "titles.name",
-                        kwargs["titles"]]},
-            HelperQuery{tables: vec!["subjects", "book_subjects"],
-                        query_struct: vec!["subjects.id = book_subjects.bookid and books.id = book_subjects.subjectid ", 
-                        "subjects.name",
-                         kwargs["subjects"]]},
-            HelperQuery{tables: vec!["publishers"],
-                        query_struct: vec!["publishers.id = books.publisherid",
-                        "publishers.name",
-                        kwargs["publishers"]]},
-            HelperQuery{tables: vec!["bookshelves"],
-                        query_struct: vec!["bookshelves.id = books.bookshelveid", 
-                        "bookshelves.name",
-                         kwargs["bookshelves"]]},
-            HelperQuery{tables: vec!["downloadlinks", "downloadlinkstype"],
-                        query_struct: vec!["downloadlinks.downloadtypeid =  downloadlinkstype.id and downloadlinks.bookid = books.id"
-                        , "downloadlinkstype.name"
-                        ,  kwargs["downloadtype"]]}
-        ];
-        let runtime  = helpers
-                                                        .into_iter()
-                                                        .filter(|x|  !x.query_struct[2].is_empty())
-                                                        .collect::<Vec<HelperQuery>>();
 
-
-        let mut query = "SELECT DISTINCT books.gutenbergbookid FROM books".to_string();
-        for q in runtime {   
-            query = format!("{},{}", query ,q.tables.join(","))
-        }
-
-        query = format!("{} WHERE ", query);
-    
-        for (idx, q) in runtime.iter().enumerate() {
-            query = format!("{} {} and {} in ({}) "
-            , query
-            , q.query_struct[0]
-            , q.query_struct[1]
-            , q.query_struct[2]);
-            if idx != runtime.len() - 1 {
-                query = format!("%s and ", query);
-            }
-        }
-        res = []
-        for row in self.native_query(query):
-            res.append(int(row[0]))
-
-        Ok(()
-    )
-    }
-    fn native_query(self, __query: &str) -> Result<(), Box<dyn Error>> {
-        Ok(())
-    }
-}
-
-impl SQLiteCache {
     fn insert_links(
         connection: &mut Connection,
         links: Vec<(usize, usize)>,

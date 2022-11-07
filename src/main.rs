@@ -1,8 +1,8 @@
 use bzip2::read::BzDecoder;
-use db_cache::DBCache;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
+use sqlite_cache::SQLiteCache;
 use std::cmp::min;
 use std::error::Error;
 use std::fs::File;
@@ -141,8 +141,9 @@ pub async fn exec() -> Result<(), Box<dyn Error>> {
     decompress_tar(bz_filename.as_str(), total_archive_size)?;
     let folder = Path::new("cache").join("epub");
     let parse_result = xml_parser::parse_xml(&folder)?;
-    let mut cache = sqlite_cache::SQLiteCache::default();
-    cache.create_cache(&parse_result)?;
+    let mut cache_settings = sqlite_cache::SQLiteCacheSettings::default();
+    
+    let cache = SQLiteCache::create_cache(&parse_result, cache_settings)?;
     Ok(())
 }
 
