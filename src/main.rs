@@ -1,4 +1,5 @@
 use bzip2::read::BzDecoder;
+use db_cache::DBCache;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
 use reqwest::Client;
@@ -9,6 +10,7 @@ use std::fs::File;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
 use tar::Archive;
+use serde_json::json;
 
 mod book;
 mod db_cache;
@@ -129,7 +131,7 @@ fn decompress_tar(path: &str, initial_size: u64) -> Result<(), Box<dyn Error>> {
 }
 
 pub async fn exec() -> Result<(), Box<dyn Error>> {
-    let filename = "gutenberg.tar.bz2";
+    /*let filename = "gutenberg.tar.bz2";
 
     download_file(
         &Client::new(),
@@ -141,9 +143,17 @@ pub async fn exec() -> Result<(), Box<dyn Error>> {
     decompress_tar(bz_filename.as_str(), total_archive_size)?;
     let folder = Path::new("cache").join("epub");
     let parse_result = xml_parser::parse_xml(&folder)?;
+    */
     let mut cache_settings = sqlite_cache::SQLiteCacheSettings::default();
     
-    let cache = SQLiteCache::create_cache(&parse_result, cache_settings)?;
+    //let mut cache = SQLiteCache::create_cache(&parse_result, cache_settings)?;
+    let mut cache = SQLiteCache::get_cache(cache_settings)?;
+    let res = cache.query(&json!({
+        "languages": "\"en\"",
+    }))?;
+    for r in res {
+        println!("{}",r);
+    }
     Ok(())
 }
 

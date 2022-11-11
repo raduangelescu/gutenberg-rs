@@ -1,7 +1,7 @@
 use std::error::Error;
-use indexmap::IndexMap;
+use serde_json::Value;
 
 pub trait DBCache {
-    fn query(&mut self, kwargs: IndexMap::<&str, &str>) -> Result<(), Box<dyn Error>>;
-    fn native_query(&mut self, query: &str) -> Result<Vec<String>, Box<dyn Error>>;
+    fn query(&mut self, json: &Value) -> Result<Vec<i32>, Box<dyn Error>>;
+    fn native_query(&mut self, query: &str) -> Result<Vec<i32>, Box<dyn Error>>;
 }
