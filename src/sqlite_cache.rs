@@ -110,12 +110,12 @@ impl DBCache for SQLiteCache {
     fn native_query(&mut self, query: &str) -> Result<Vec<i32>, Box<dyn Error>> {
         let mut stmt = self.connection.prepare(query)?;
         println!("{}", query);
-        let rows  = stmt.query_map((), |row| {
-            row.get(0)            
-        })?
-        .collect::<Result<Vec<i32>, rusqlite::Error>>()?;
-
-        Ok(rows)
+        let mut rows  = stmt.query(())?;
+        let mut results = Vec::new();
+        while let Some(row) = rows.next()? {
+            results.push(row.get(0)?);
+        }
+        Ok(results)
     }
 }
 
