@@ -141,13 +141,14 @@ pub async fn exec() -> Result<(), Box<dyn Error>> {
     .await?;
     let (total_archive_size, bz_filename) = decompress_bz(filename)?;
     decompress_tar(bz_filename.as_str(), total_archive_size)?;
+    */
     let folder = Path::new("cache").join("epub");
     let parse_result = xml_parser::parse_xml(&folder)?;
-    */
+    
     let mut cache_settings = sqlite_cache::SQLiteCacheSettings::default();
     
-    //let mut cache = SQLiteCache::create_cache(&parse_result, cache_settings)?;
-    let mut cache = SQLiteCache::get_cache(cache_settings)?;
+    let mut cache = SQLiteCache::create_cache(&parse_result, cache_settings)?;
+    //let mut cache = SQLiteCache::get_cache(cache_settings)?;
     let res = cache.query(&json!({
         "languages": "\"en\"",
     }))?;

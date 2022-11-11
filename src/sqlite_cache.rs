@@ -102,7 +102,7 @@ impl DBCache for SQLiteCache {
             }
             idx = idx + 1;
         }
-        let query_result = &self.native_query("SELECT LANGUAGES.ID FROM LANGUAGES;")?;
+        let query_result = &self.native_query(&query)?;
 
         Ok(query_result.clone())
     }
@@ -287,8 +287,8 @@ impl SQLiteCache {
                 ])?;
             }
 
-            connection.execute("INSERT OR IGNORE INTO books(publisherid,dateissued,rightsid,numdownloads,gutenbergbookid) VALUES (?,?,?,?,?)"
-            , (book.publisher_id, book.date_issued.clone(), book.rights_id,
+            connection.execute("INSERT OR IGNORE INTO books(publisherid,rightsid,numdownloads,gutenbergbookid) VALUES (?,?,?,?)"
+            , (book.publisher_id, book.rights_id,
             book.num_downloads,book.gutenberg_book_id))?;
         }
         let create_query = include_str!("gutenbergindex_indices.db.sql");
@@ -336,7 +336,7 @@ impl SQLiteCache {
 
         let mut smt = connection.prepare(query.as_str())?;
         for item in field_dictionary.iter() {
-            smt.execute([item.0.as_str().as_bytes()])?;
+            smt.execute([item.0.as_str()])?;
         }
         Ok(())
     }

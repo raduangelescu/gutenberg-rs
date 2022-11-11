@@ -1,6 +1,5 @@
 BEGIN TRANSACTION;
 
-CREATE INDEX `books_dateissued_idx` ON `books` (`dateissued` ASC);
 CREATE INDEX `books_numdownloads_idx` ON `books` (`numdownloads` ASC);
 CREATE INDEX `gutenbergbookid_idx` ON `books` (`gutenbergbookid` ASC);
 
