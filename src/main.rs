@@ -11,6 +11,8 @@ use std::io::{Read, Seek, Write};
 use std::path::Path;
 use tar::Archive;
 use serde_json::json;
+use textget::{get_text_by_id, strip_headers};
+use settings::GutenbergCacheSettings;
 
 mod book;
 mod db_cache;
@@ -22,6 +24,8 @@ mod fst_parser_or_node;
 mod fst_parser_type;
 mod sqlite_cache;
 mod xml_parser;
+mod textget;
+mod settings;
 
 pub async fn download_file(client: &Client, url: &str, path: &str) -> Result<(), String> {
     let res = client
@@ -142,18 +146,27 @@ pub async fn exec() -> Result<(), Box<dyn Error>> {
     let (total_archive_size, bz_filename) = decompress_bz(filename)?;
     decompress_tar(bz_filename.as_str(), total_archive_size)?;
     */
-    let folder = Path::new("cache").join("epub");
-    let parse_result = xml_parser::parse_xml(&folder)?;
+    //let folder = Path::new("cache").join("epub");
+    //let parse_result = xml_parser::parse_xml(&folder)?;
     
     let mut cache_settings = sqlite_cache::SQLiteCacheSettings::default();
     
-    let mut cache = SQLiteCache::create_cache(&parse_result, cache_settings)?;
-    //let mut cache = SQLiteCache::get_cache(cache_settings)?;
+    //let mut cache = SQLiteCache::create_cache(&parse_result, cache_settings)?;
+    
+    let mut cache = SQLiteCache::get_cache(cache_settings)?;
     let res = cache.query(&json!({
         "languages": "\"en\"",
     }))?;
-    for r in res {
-        println!("{}",r);
+    let settings = GutenbergCacheSettings::default();
+    for (idx, r) in res.iter().enumerate() {
+        println!("getting text for gutenberg idx: {}", r);
+        let links = cache.get_download_links(vec![*r])?;
+        for link in links {
+            let res = get_text_by_id(&settings, &link, *r).await.unwrap();
+        }
+        if idx > 20 {
+            break;
+        }
     }
     Ok(())
 }

@@ -3,39 +3,39 @@ CREATE TABLE `titles` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT,
 	`bookid` INTEGER
-)STRICT;
+);
 CREATE TABLE `subjects` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT
-)STRICT;
+);
 CREATE TABLE `rights` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT
-)STRICT;
+);
 CREATE TABLE `publishers` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT
-)STRICT;
+);
 CREATE TABLE `languages` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT
-)STRICT;
+);
 
 CREATE TABLE `downloadlinkstype` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT
-)STRICT;
+);
 
 CREATE TABLE `downloadlinks` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT,
 	`downloadtypeid`	INTEGER,
 	`bookid` INTEGER
-)STRICT;
+);
 CREATE TABLE `bookshelves` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT
-)STRICT;
+);
 CREATE TABLE "books" (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`publisherid` INTEGER,
@@ -45,25 +45,25 @@ CREATE TABLE "books" (
 	`bookshelveid` INTEGER,
 	`gutenbergbookid` INTEGER,
 	`typeid` INTEGER
-)STRICT;
+);
 CREATE TABLE `book_subjects` (
 	`bookid`	INTEGER,
 	`subjectid`	INTEGER
-)STRICT;
+);
 CREATE TABLE `book_authors` (
 	`bookid`	INTEGER,
 	`authorid`	INTEGER
-)STRICT;
+);
 CREATE TABLE `book_languages` (
 	`bookid`	INTEGER,
 	`languageid`	INTEGER
-)STRICT;
+);
 CREATE TABLE `book_bookshelves` (
 	`bookid`	INTEGER,
 	`bookshelfid`	INTEGER
-)STRICT;
+);
 CREATE TABLE `authors` (
 	`id`	INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
 	`name`	TEXT
-)STRICT;
+);
 COMMIT;

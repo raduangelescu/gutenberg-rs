@@ -33,6 +33,20 @@ impl Default for SQLiteCacheSettings {
 }
 
 impl DBCache for SQLiteCache {
+    
+    fn get_download_links(&mut self, ids: Vec<i32>) ->  Result<Vec<String>, Box<dyn Error>> {
+        let ids_collect = ids.iter().map(|x| x.to_string()).collect::<Vec<String>>();
+        let ids_str = ids_collect.join(",");
+        let q = format!("SELECT downloadlinks.name FROM downloadlinks, books WHERE downloadlinks.bookid = books.id AND books.gutenbergbookid IN ({}) AND downloadlinks.downloadtypeid in (5, 6, 10,13,26,27,28,33,34,35,40,46,49,51)", ids_str);
+        println!("query: {}", q);
+        let mut stmt = self.connection.prepare(&q)?;
+        let mut rows  = stmt.query(())?;
+        let mut results = Vec::new();
+        while let Some(row) = rows.next()? {
+            results.push(row.get(0)?);
+        }
+        Ok(results)
+    }
 
     fn query(&mut self, json: &Value) -> Result<Vec<i32>, Box<dyn Error>> {
         let mut helpers= Vec::new();
@@ -283,7 +297,7 @@ impl SQLiteCache {
                 smt.execute([
                     file_link,
                     item.file_type_id.to_string().as_str(),
-                    idx.to_string().as_str(),
+                    (idx + 1).to_string().as_str(),
                 ])?;
             }
 

@@ -29,7 +29,7 @@ impl FSTParser for FSTParserFileNode {
         }
         self.has_node = true;
         let idx = parse_result.add_file_type(text.to_string(), book_id)?;
-        self.files.last_mut().unwrap().file_type_id = idx as i32;
+        self.files.last_mut().unwrap().file_type_id = (idx + 1) as i32;
         Ok(())
     }
 
