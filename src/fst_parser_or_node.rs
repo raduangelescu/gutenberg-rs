@@ -80,7 +80,7 @@ impl FSTParser for FSTParserOrNode {
         }
         Err(Error::InvalidResult("no results".to_string()))
     }
-    
+
     fn get_files(&self) -> Result<Vec<GutenbergFileEntry>, Error> {
         Err(Error::InvalidResult("no files".to_string()))
     }

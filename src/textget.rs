@@ -1,11 +1,11 @@
 //
 // MARKERS ARE FROM https://github.com/c-w/Gutenberg/blob/master/gutenberg/_domain_model/text.py
-use std::path::{Path};
-use std::fs::create_dir_all;
-use std::fs;
-use std::error::Error;
-use url::{Url, Position};
 use reqwest::Client;
+use std::error::Error;
+use std::fs;
+use std::fs::create_dir_all;
+use std::path::Path;
+use url::{Position, Url};
 
 use crate::settings::GutenbergCacheSettings;
 
@@ -94,10 +94,10 @@ const TEXT_END_MARKERS: &[&str] = &[
     " *** END OF THIS PROJECT GUTENBERG",
 ];
 
-const LEGALESE_START_MARKERS: &[&str] = &["<<THIS ELECTRONIC VERSION OF",];
-const LEGALESE_END_MARKERS: &[&str] = &["SERVICE THAT CHARGES FOR DOWNLOAD",];
+const LEGALESE_START_MARKERS: &[&str] = &["<<THIS ELECTRONIC VERSION OF"];
+const LEGALESE_END_MARKERS: &[&str] = &["SERVICE THAT CHARGES FOR DOWNLOAD"];
 
-async fn _download_content(link: &String) -> Result<String, Box<dyn Error>>  {
+async fn _download_content(link: &String) -> Result<String, Box<dyn Error>> {
     let client = &Client::new();
     let request = client.get(link);
     let content = request.send().await;
@@ -105,9 +105,12 @@ async fn _download_content(link: &String) -> Result<String, Box<dyn Error>>  {
     Ok(string)
 }
 
-pub async fn get_text_by_id(settings: &GutenbergCacheSettings, link: &String) -> Result<String, std::io::Error> {
+pub async fn get_text_by_id(
+    settings: &GutenbergCacheSettings,
+    link: &String,
+) -> Result<String, std::io::Error> {
     println!("link {}", link);
-    let the_url = &Url::parse(link).unwrap()[Position::AfterHost .. Position::AfterPath];
+    let the_url = &Url::parse(link).unwrap()[Position::AfterHost..Position::AfterPath];
     let file_link = the_url.split_terminator("/").last().unwrap_or("");
 
     let file_cache_location = Path::new(settings.text_files_cache_folder.as_str()).join(file_link);
@@ -121,8 +124,7 @@ pub async fn get_text_by_id(settings: &GutenbergCacheSettings, link: &String) ->
         println!("writing file {}", file_cache_location.display());
         fs::write(file_cache_location, &content).expect("Unable to write file");
         return Ok(content);
-    }
-    else {
+    } else {
         fs::read_to_string(file_cache_location)
     }
 }
@@ -137,10 +139,10 @@ fn line_starts_with_any(line: &str, tokens: &[&str]) -> bool {
 }
 
 pub fn strip_headers(text: String) -> String {
-#[cfg(windows)]
-const LINE_ENDING: &'static str = "\r\n";
-#[cfg(not(windows))]
-const LINE_ENDING: &'static str = "\n";
+    #[cfg(windows)]
+    const LINE_ENDING: &'static str = "\r\n";
+    #[cfg(not(windows))]
+    const LINE_ENDING: &'static str = "\n";
 
     let lines = text.split(LINE_ENDING);
     let mut out: Vec<&str> = Vec::new();
@@ -161,7 +163,7 @@ const LINE_ENDING: &'static str = "\n";
             // end of the header
             if reset {
                 out = Vec::new();
-                continue
+                continue;
             }
         }
         if i >= 100 {
@@ -171,14 +173,13 @@ const LINE_ENDING: &'static str = "\n";
             }
             // If it's the beginning of the footer, stop output
             if footer_found {
-                break
+                break;
             }
         }
         if line_starts_with_any(line, LEGALESE_START_MARKERS) {
             ignore_section = true;
             continue;
-        }
-        else if line_starts_with_any(line, LEGALESE_END_MARKERS) {
+        } else if line_starts_with_any(line, LEGALESE_END_MARKERS) {
             ignore_section = false;
             continue;
         }
@@ -191,4 +192,3 @@ const LINE_ENDING: &'static str = "\n";
 
     return out.join(LINE_ENDING);
 }
-    

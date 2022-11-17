@@ -1,7 +1,7 @@
-use std::path::Path;
 use crate::error::Error;
 use num_traits::ToPrimitive;
 use serde_json::Value;
+use std::path::Path;
 
 pub struct GutenbergCacheSettings {
     pub cache_rdf_download_link: String,
@@ -17,9 +17,14 @@ impl Default for GutenbergCacheSettings {
     fn default() -> GutenbergCacheSettings {
         GutenbergCacheSettings {
             text_files_cache_folder: "text_cache".to_string(),
-            cache_rdf_download_link: "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2".to_string(),
+            cache_rdf_download_link: "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2"
+                .to_string(),
             cache_filename: "gutenbergindex.db".to_string(),
-            cache_rdf_unpack_directory: Path::new("cache").join("epub").as_path().display().to_string(),
+            cache_rdf_unpack_directory: Path::new("cache")
+                .join("epub")
+                .as_path()
+                .display()
+                .to_string(),
             cache_rdf_archive_name: "rdf-files.tar.bz2".to_string(),
             download_num_divs: 20,
             mongo_db_connection_server: "mongodb://localhost:27017".to_string(),
@@ -33,24 +38,21 @@ impl GutenbergCacheSettings {
         if let Some(field) = json.get("CacheFilename") {
             if let Some(v) = field.as_str() {
                 settings.cache_filename = v.to_string();
-            }
-            else {
+            } else {
                 return Err(Error::InvalidSettingsField("CacheFilename".to_string()));
             }
         }
         if let Some(field) = json.get("CacheUnpackDir") {
             if let Some(v) = field.as_str() {
                 settings.cache_rdf_unpack_directory = v.to_string();
-            }
-            else {
+            } else {
                 return Err(Error::InvalidSettingsField("CacheUnpackDir".to_string()));
             }
         }
         if let Some(field) = json.get("CacheArchiveName") {
             if let Some(v) = field.as_str() {
-                settings.cache_rdf_archive_name =  v.to_string();
-            }
-            else {
+                settings.cache_rdf_archive_name = v.to_string();
+            } else {
                 return Err(Error::InvalidSettingsField("CacheArchiveName".to_string()));
             }
         }
@@ -58,37 +60,42 @@ impl GutenbergCacheSettings {
             if let Some(v) = field.as_i64() {
                 if let Some(vi32) = v.to_i32() {
                     settings.download_num_divs = vi32;
+                } else {
+                    return Err(Error::InvalidSettingsField(
+                        "ProgressBarMaxLength".to_string(),
+                    ));
                 }
-                else {
-                    return Err(Error::InvalidSettingsField("ProgressBarMaxLength".to_string()));
-                }
-            }
-            else {
-                return Err(Error::InvalidSettingsField("ProgressBarMaxLength".to_string()));
+            } else {
+                return Err(Error::InvalidSettingsField(
+                    "ProgressBarMaxLength".to_string(),
+                ));
             }
         }
         if let Some(field) = json.get("CacheRDFDownloadLink") {
             if let Some(v) = field.as_str() {
                 settings.cache_rdf_download_link = v.to_string();
-            }
-            else {
-                return Err(Error::InvalidSettingsField("CacheRDFDownloadLink".to_string()));
+            } else {
+                return Err(Error::InvalidSettingsField(
+                    "CacheRDFDownloadLink".to_string(),
+                ));
             }
         }
         if let Some(field) = json.get("TextFilesCacheFolder") {
             if let Some(v) = field.as_str() {
                 settings.text_files_cache_folder = v.to_string();
-            }
-            else {
-                return Err(Error::InvalidSettingsField("TextFilesCacheFolder".to_string()));
+            } else {
+                return Err(Error::InvalidSettingsField(
+                    "TextFilesCacheFolder".to_string(),
+                ));
             }
         }
         if let Some(field) = json.get("MongoDBCacheServer") {
             if let Some(v) = field.as_str() {
                 settings.mongo_db_connection_server = v.to_string();
-            }
-            else {
-                return Err(Error::InvalidSettingsField("MongoDBCacheServer".to_string()));
+            } else {
+                return Err(Error::InvalidSettingsField(
+                    "MongoDBCacheServer".to_string(),
+                ));
             }
         }
         Ok(settings)

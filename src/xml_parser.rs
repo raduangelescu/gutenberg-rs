@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::str;
 
 use crate::book::Book;
+use crate::error::Error;
 use crate::fst_parser::DictionaryItemContent;
 use crate::fst_parser::FSTParser;
 use crate::fst_parser::ParseItemResult;
@@ -16,7 +17,6 @@ use crate::fst_parser_file_node::FSTParserFileNode;
 use crate::fst_parser_node::FSTParserNode;
 use crate::fst_parser_or_node::FSTParserOrNode;
 use crate::fst_parser_type::ParseType;
-use crate::error::Error;
 
 fn parse_rdf(
     path: &PathBuf,

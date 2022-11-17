@@ -1,24 +1,22 @@
+use crate::error::Error;
 use bzip2::read::BzDecoder;
-use reqwest::Client;
-use tar::Archive;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
+use reqwest::Client;
+use std::cmp::min;
 use std::fs::File;
 use std::io::{Read, Seek, Write};
-use std::cmp::min;
-use crate::error::Error;
+use tar::Archive;
 
 pub async fn download_file(url: &str, path: &str) -> Result<(), Error> {
     let client = &Client::new();
-    let res = client
-        .get(url)
-        .send()
-        .await
-        .or(Err(Error::InvalidRequest(format!("Failed to GET from '{}'", &url).to_string())))?;
-    
-    let total_size = res
-        .content_length()
-        .ok_or(Error::InvalidRequest(format!("Bad file from '{}'", &url).to_string()))?;
+    let res = client.get(url).send().await.or(Err(Error::InvalidRequest(
+        format!("Failed to GET from '{}'", &url).to_string(),
+    )))?;
+
+    let total_size = res.content_length().ok_or(Error::InvalidRequest(
+        format!("Bad file from '{}'", &url).to_string(),
+    ))?;
 
     let mut file;
     let mut downloaded: u64 = 0;
@@ -35,7 +33,10 @@ pub async fn download_file(url: &str, path: &str) -> Result<(), Error> {
         file.seek(std::io::SeekFrom::Start(file_size)).unwrap();
         downloaded = file_size;
     } else {
-        file = File::create(path).or(Err(Error::InvalidRequest(format!("Failed to create file '{}'", path))))?;
+        file = File::create(path).or(Err(Error::InvalidRequest(format!(
+            "Failed to create file '{}'",
+            path
+        ))))?;
     }
 
     let pb = ProgressBar::new(total_size);
@@ -46,9 +47,12 @@ pub async fn download_file(url: &str, path: &str) -> Result<(), Error> {
     pb.set_message(format!("Downloading {} from {}", path, url));
 
     while let Some(item) = stream.next().await {
-        let chunk = item.or(Err(Error::InvalidRequest(format!("Error while downloading file"))))?;
-        file.write(&chunk)
-            .or(Err(Error::InvalidRequest(format!("Error while writing to file"))))?;
+        let chunk = item.or(Err(Error::InvalidRequest(format!(
+            "Error while downloading file"
+        ))))?;
+        file.write(&chunk).or(Err(Error::InvalidRequest(format!(
+            "Error while writing to file"
+        ))))?;
         let new = min(downloaded + (chunk.len() as u64), total_size);
         downloaded = new;
         pb.set_position(new);
@@ -106,7 +110,6 @@ pub fn decompress_tar(path: &str, initial_size: u64) -> Result<(), Error> {
     let pb = ProgressBar::new(initial_size);
     pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] {bytes}/{total_bytes} ({eta})")
     ?.progress_chars("█  "));
- 
 
     pb.set_message(format!("Unpacking to folder"));
 

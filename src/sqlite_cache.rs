@@ -1,4 +1,5 @@
 use crate::db_cache::DBCache;
+use crate::error::Error;
 use crate::fst_parser::DictionaryItemContent;
 use crate::fst_parser::ParseResult;
 use crate::fst_parser_type::ParseType;
@@ -7,27 +8,25 @@ use indexmap::IndexMap;
 use indicatif::{ProgressBar, ProgressStyle};
 use num_traits::FromPrimitive;
 use rusqlite::Connection;
-use crate::error::Error;
+use serde_json::Value;
 use std::fs;
 use std::path::Path;
-use serde_json::Value;
 
 pub struct SQLiteCache {
     connection: Box<Connection>,
 }
-struct HelperQuery <'a> {
-    tables : Vec<&'a str>,
-    query_struct : Vec<&'a str>,
+struct HelperQuery<'a> {
+    tables: Vec<&'a str>,
+    query_struct: Vec<&'a str>,
 }
 
 impl DBCache for SQLiteCache {
-    
-    fn get_download_links(&mut self, ids: Vec<i32>) ->  Result<Vec<String>, Error> {
+    fn get_download_links(&mut self, ids: Vec<i32>) -> Result<Vec<String>, Error> {
         let ids_collect = ids.iter().map(|x| x.to_string()).collect::<Vec<String>>();
         let ids_str = ids_collect.join(",");
         let q = format!("SELECT downloadlinks.name FROM downloadlinks, books WHERE downloadlinks.bookid = books.id AND books.gutenbergbookid IN ({}) AND downloadlinks.downloadtypeid in (5, 6, 10,13,26,27,28,33,34,35,40,46,49,51)", ids_str);
         let mut stmt = self.connection.prepare(&q)?;
-        let mut rows  = stmt.query(())?;
+        let mut rows = stmt.query(())?;
         let mut results = Vec::new();
         while let Some(row) = rows.next()? {
             results.push(row.get(0)?);
@@ -36,47 +35,77 @@ impl DBCache for SQLiteCache {
     }
 
     fn query(&mut self, json: &Value) -> Result<Vec<i32>, Error> {
-        let mut helpers= Vec::new();
-        
+        let mut helpers = Vec::new();
+
         if let Some(field) = json.get("languages") {
-    
-            helpers.push(HelperQuery{tables : vec!["languages", "book_languages"], 
-                        query_struct: vec!["languages.id = book_languages.languageid AND books.id = book_languages.bookid", "languages.name",
-                        field.as_str().unwrap() ]});
+            helpers.push(HelperQuery {
+                tables: vec!["languages", "book_languages"],
+                query_struct: vec![
+                    "languages.id = book_languages.languageid AND books.id = book_languages.bookid",
+                    "languages.name",
+                    field.as_str().unwrap(),
+                ],
+            });
         }
         if let Some(field) = json.get("authors") {
-            helpers.push(HelperQuery{tables : vec!["authors", "book_authors"],
-                        query_struct: vec!["authors.id = book_authors.authorid and books.id = book_authors.bookid","authors.name",
-                        field.as_str().unwrap()]});
+            helpers.push(HelperQuery {
+                tables: vec!["authors", "book_authors"],
+                query_struct: vec![
+                    "authors.id = book_authors.authorid and books.id = book_authors.bookid",
+                    "authors.name",
+                    field.as_str().unwrap(),
+                ],
+            });
         }
         if let Some(field) = json.get("types") {
-            helpers.push(HelperQuery{tables: vec!["types"],
-                        query_struct: vec!["books.typeid = types.id", "types.name",
-                        field.as_str().unwrap()]});
+            helpers.push(HelperQuery {
+                tables: vec!["types"],
+                query_struct: vec![
+                    "books.typeid = types.id",
+                    "types.name",
+                    field.as_str().unwrap(),
+                ],
+            });
         }
         if let Some(field) = json.get("types") {
-            helpers.push(HelperQuery{tables: vec!["titles"],
-                        query_struct: vec!["titles.bookid = books.id", 
-                        "titles.name",
-                        field.as_str().unwrap()]});
+            helpers.push(HelperQuery {
+                tables: vec!["titles"],
+                query_struct: vec![
+                    "titles.bookid = books.id",
+                    "titles.name",
+                    field.as_str().unwrap(),
+                ],
+            });
         }
         if let Some(field) = json.get("subjects") {
-            helpers.push(HelperQuery{tables: vec!["subjects", "book_subjects"],
-                        query_struct: vec!["subjects.id = book_subjects.bookid and books.id = book_subjects.subjectid ", 
-                        "subjects.name",
-                        field.as_str().unwrap()]});
+            helpers.push(HelperQuery {
+                tables: vec!["subjects", "book_subjects"],
+                query_struct: vec![
+                    "subjects.id = book_subjects.bookid and books.id = book_subjects.subjectid ",
+                    "subjects.name",
+                    field.as_str().unwrap(),
+                ],
+            });
         }
         if let Some(field) = json.get("publishers") {
-            helpers.push(HelperQuery{tables: vec!["publishers"],
-                        query_struct: vec!["publishers.id = books.publisherid",
-                        "publishers.name",
-                        field.as_str().unwrap()]});
+            helpers.push(HelperQuery {
+                tables: vec!["publishers"],
+                query_struct: vec![
+                    "publishers.id = books.publisherid",
+                    "publishers.name",
+                    field.as_str().unwrap(),
+                ],
+            });
         }
         if let Some(field) = json.get("publishers") {
-            helpers.push(HelperQuery{tables: vec!["bookshelves"],
-                        query_struct: vec!["bookshelves.id = books.bookshelveid", 
-                        "bookshelves.name",
-                        field.as_str().unwrap()]});
+            helpers.push(HelperQuery {
+                tables: vec!["bookshelves"],
+                query_struct: vec![
+                    "bookshelves.id = books.bookshelveid",
+                    "bookshelves.name",
+                    field.as_str().unwrap(),
+                ],
+            });
         }
         if let Some(field) = json.get("publishers") {
             helpers.push(HelperQuery{tables: vec!["downloadlinks", "downloadlinkstype"],
@@ -86,18 +115,17 @@ impl DBCache for SQLiteCache {
         }
 
         let mut query = "SELECT DISTINCT books.gutenbergbookid FROM books".to_string();
-        for q in &helpers {   
-            query = format!("{},{}", query ,q.tables.join(","))
+        for q in &helpers {
+            query = format!("{},{}", query, q.tables.join(","))
         }
 
         query = format!("{} WHERE ", query);
         let mut idx = 0;
         for q in &helpers {
-            query = format!("{} {} and {} in ({}) "
-            , query
-            , q.query_struct[0]
-            , q.query_struct[1]
-            , q.query_struct[2]);
+            query = format!(
+                "{} {} and {} in ({}) ",
+                query, q.query_struct[0], q.query_struct[1], q.query_struct[2]
+            );
             if idx != helpers.len() - 1 {
                 query = format!("{} and ", query);
             }
@@ -110,7 +138,7 @@ impl DBCache for SQLiteCache {
 
     fn native_query(&mut self, query: &str) -> Result<Vec<i32>, Error> {
         let mut stmt = self.connection.prepare(query)?;
-        let mut rows  = stmt.query(())?;
+        let mut rows = stmt.query(())?;
         let mut results = Vec::new();
         while let Some(row) = rows.next()? {
             results.push(row.get(0)?);
@@ -123,21 +151,26 @@ impl SQLiteCache {
     pub fn get_cache(settings: &GutenbergCacheSettings) -> Result<SQLiteCache, Error> {
         if Path::new(&settings.cache_filename).exists() {
             let connection = Box::new(Connection::open(&settings.cache_filename)?);
-            return Ok(SQLiteCache{connection});
+            return Ok(SQLiteCache { connection });
         }
-        Err(Error::InvalidIO(format!("No cache file {}", settings.cache_filename).to_string()))
+        Err(Error::InvalidIO(
+            format!("No cache file {}", settings.cache_filename).to_string(),
+        ))
     }
 
-    pub fn create_cache(parse_results: &ParseResult, settings: &GutenbergCacheSettings, force_recreate: Option<bool>) -> Result<SQLiteCache, Error> {
+    pub fn create_cache(
+        parse_results: &ParseResult,
+        settings: &GutenbergCacheSettings,
+        force_recreate: Option<bool>,
+    ) -> Result<SQLiteCache, Error> {
         let should_recreate = force_recreate.unwrap_or(false);
 
         if Path::new(&settings.cache_filename).exists() {
             if should_recreate {
                 fs::remove_file(&settings.cache_filename)?;
-            }
-            else {
+            } else {
                 let connection = Box::new(Connection::open(&settings.cache_filename)?);
-                return Ok(SQLiteCache{connection});
+                return Ok(SQLiteCache { connection });
             }
         }
         let mut connection = Box::new(Connection::open(&settings.cache_filename)?);
@@ -298,7 +331,7 @@ impl SQLiteCache {
 
         pb.finish();
 
-        Ok(SQLiteCache{connection})
+        Ok(SQLiteCache { connection })
     }
 
     fn insert_links(

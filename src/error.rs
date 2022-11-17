@@ -1,5 +1,5 @@
-use thiserror::Error;
 use indicatif::style::TemplateError;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -18,7 +18,7 @@ pub enum Error {
     #[error("SQLITE error")]
     InvalidSQLITE(String),
     #[error("UTF8 error")]
-    InvalidUTF8String(String)
+    InvalidUTF8String(String),
 }
 
 impl std::convert::From<std::io::Error> for Error {

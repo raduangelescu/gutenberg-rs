@@ -1,5 +1,5 @@
-use serde_json::Value;
 use crate::error::Error;
+use serde_json::Value;
 
 pub trait DBCache {
     fn query(&mut self, json: &Value) -> Result<Vec<i32>, Error>;
