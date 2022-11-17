@@ -1,8 +1,7 @@
 use crate::book::{Book, GutenbergFileEntry};
-use crate::error::ParseError;
+use crate::error::Error;
 use crate::fst_parser_type::ParseType;
 use indexmap::IndexMap;
-use std::error::Error;
 
 #[derive(Default)]
 pub struct ParseItemResult {
@@ -16,7 +15,7 @@ impl ParseItemResult {
         parse_type: ParseType,
         data: String,
         book_id: i32,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Error> {
         let data_idx = parse_result.add_field(parse_type, data, book_id)?;
         self.item_links.push(data_idx);
         Ok(())
@@ -45,7 +44,7 @@ impl ParseResult {
         map: &mut IndexMap<String, DictionaryItemContent>,
         data: String,
         book_id: i32,
-    ) -> Result<usize, ParseError> {
+    ) -> Result<usize, Error> {
         let map_entry = map.get_full_mut(data.as_str());
         if map_entry.is_none() {
             let result = map.insert_full(
@@ -62,22 +61,25 @@ impl ParseResult {
                 return Ok(data.0);
             }
             None => {
-                return Err(ParseError::InvalidResult("bad data".to_string()));
+                return Err(Error::InvalidRdf("Book links".to_string()));
             }
         }
     }
-    pub fn add_file(&mut self, data: String, book_id: i32) -> Result<usize, ParseError> {
+
+    pub fn add_file(&mut self, data: String, book_id: i32) -> Result<usize, Error> {
         ParseResult::add(&mut self.files_dictionary, data, book_id)
     }
-    pub fn add_file_type(&mut self, data: String, book_id: i32) -> Result<usize, ParseError> {
+
+    pub fn add_file_type(&mut self, data: String, book_id: i32) -> Result<usize, Error> {
         ParseResult::add(&mut self.file_types_dictionary, data, book_id)
     }
+
     pub fn add_field(
         &mut self,
         field: ParseType,
         data: String,
         book_id: i32,
-    ) -> Result<usize, ParseError> {
+    ) -> Result<usize, Error> {
         ParseResult::add(&mut self.field_dictionaries[field as usize], data, book_id)
     }
 }
@@ -87,7 +89,7 @@ pub trait FSTParser {
         text: &str,
         parse_result: &mut ParseResult,
         book_id: i32,
-    ) -> Result<(), Box<dyn Error>>;
+    ) -> Result<(), Error>;
     fn reset(&mut self);
     fn start_node(&mut self, text: &str);
     fn attribute(
@@ -101,6 +103,6 @@ pub trait FSTParser {
     fn is_found(&self) -> bool;
     fn has_results(&self) -> bool;
     fn get_parse_type(&self) -> ParseType;
-    fn get_result(&self) -> Result<&ParseItemResult, ParseError>;
-    fn get_files(&self) -> Result<Vec<GutenbergFileEntry>, ParseError>;
+    fn get_result(&self) -> Result<&ParseItemResult, Error>;
+    fn get_files(&self) -> Result<Vec<GutenbergFileEntry>, Error>;
 }

@@ -1,9 +1,8 @@
 use crate::book::GutenbergFileEntry;
-use crate::error::ParseError;
+use crate::error::Error;
 use crate::fst_parser::{FSTParser, ParseItemResult, ParseResult};
 use crate::fst_parser_node::FSTParserNode;
 use crate::fst_parser_type::ParseType;
-use std::error::Error;
 use std::str;
 
 pub struct FSTParserOrNode {
@@ -17,7 +16,7 @@ impl FSTParser for FSTParserOrNode {
         text: &str,
         parse_result: &mut ParseResult,
         book_id: i32,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Error> {
         for node in &mut self.nodes {
             node.text(text, parse_result, book_id)?;
         }
@@ -73,16 +72,17 @@ impl FSTParser for FSTParserOrNode {
         self.parse_type
     }
 
-    fn get_result(&self) -> Result<&ParseItemResult, ParseError> {
+    fn get_result(&self) -> Result<&ParseItemResult, Error> {
         for node in &self.nodes {
             if node.has_results() {
                 return node.get_result();
             }
         }
-        Err(ParseError::InvalidResult("no results".to_string()))
+        Err(Error::InvalidResult("no results".to_string()))
     }
-    fn get_files(&self) -> Result<Vec<GutenbergFileEntry>, ParseError> {
-        Err(ParseError::InvalidResult("no results".to_string()))
+    
+    fn get_files(&self) -> Result<Vec<GutenbergFileEntry>, Error> {
+        Err(Error::InvalidResult("no files".to_string()))
     }
 }
 

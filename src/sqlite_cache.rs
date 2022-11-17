@@ -2,43 +2,30 @@ use crate::db_cache::DBCache;
 use crate::fst_parser::DictionaryItemContent;
 use crate::fst_parser::ParseResult;
 use crate::fst_parser_type::ParseType;
+use crate::settings::GutenbergCacheSettings;
 use indexmap::IndexMap;
 use indicatif::{ProgressBar, ProgressStyle};
 use num_traits::FromPrimitive;
 use rusqlite::Connection;
-use std::error::Error;
+use crate::error::Error;
 use std::fs;
 use std::path::Path;
 use serde_json::Value;
 
-pub struct SQLiteCacheSettings {
-    sqlite_db_filename: String,
-    force_recreate: bool,
-}
 pub struct SQLiteCache {
-    settings: SQLiteCacheSettings,
     connection: Box<Connection>,
 }
-pub struct HelperQuery <'a> {
+struct HelperQuery <'a> {
     tables : Vec<&'a str>,
     query_struct : Vec<&'a str>,
-}
-impl Default for SQLiteCacheSettings {
-    fn default() -> SQLiteCacheSettings {
-        SQLiteCacheSettings {
-            sqlite_db_filename: String::from("gutenberg-rs.db"),
-            force_recreate: false,
-        }
-    }
 }
 
 impl DBCache for SQLiteCache {
     
-    fn get_download_links(&mut self, ids: Vec<i32>) ->  Result<Vec<String>, Box<dyn Error>> {
+    fn get_download_links(&mut self, ids: Vec<i32>) ->  Result<Vec<String>, Error> {
         let ids_collect = ids.iter().map(|x| x.to_string()).collect::<Vec<String>>();
         let ids_str = ids_collect.join(",");
         let q = format!("SELECT downloadlinks.name FROM downloadlinks, books WHERE downloadlinks.bookid = books.id AND books.gutenbergbookid IN ({}) AND downloadlinks.downloadtypeid in (5, 6, 10,13,26,27,28,33,34,35,40,46,49,51)", ids_str);
-        println!("query: {}", q);
         let mut stmt = self.connection.prepare(&q)?;
         let mut rows  = stmt.query(())?;
         let mut results = Vec::new();
@@ -48,7 +35,7 @@ impl DBCache for SQLiteCache {
         Ok(results)
     }
 
-    fn query(&mut self, json: &Value) -> Result<Vec<i32>, Box<dyn Error>> {
+    fn query(&mut self, json: &Value) -> Result<Vec<i32>, Error> {
         let mut helpers= Vec::new();
         
         if let Some(field) = json.get("languages") {
@@ -121,9 +108,8 @@ impl DBCache for SQLiteCache {
         Ok(query_result.clone())
     }
 
-    fn native_query(&mut self, query: &str) -> Result<Vec<i32>, Box<dyn Error>> {
+    fn native_query(&mut self, query: &str) -> Result<Vec<i32>, Error> {
         let mut stmt = self.connection.prepare(query)?;
-        println!("{}", query);
         let mut rows  = stmt.query(())?;
         let mut results = Vec::new();
         while let Some(row) = rows.next()? {
@@ -134,22 +120,27 @@ impl DBCache for SQLiteCache {
 }
 
 impl SQLiteCache {
-    pub fn get_cache(cache_settings: SQLiteCacheSettings) -> Result<SQLiteCache, Box<dyn Error>> {
-        let mut connection = Box::new(Connection::open(&cache_settings.sqlite_db_filename)?);
-        return Ok(SQLiteCache{connection, settings: cache_settings});
+    pub fn get_cache(settings: &GutenbergCacheSettings) -> Result<SQLiteCache, Error> {
+        if Path::new(&settings.cache_filename).exists() {
+            let connection = Box::new(Connection::open(&settings.cache_filename)?);
+            return Ok(SQLiteCache{connection});
+        }
+        Err(Error::InvalidIO(format!("No cache file {}", settings.cache_filename).to_string()))
     }
 
-    pub fn create_cache(parse_results: &ParseResult, cache_settings: SQLiteCacheSettings) -> Result<SQLiteCache, Box<dyn Error>> {
-        if Path::new(&cache_settings.sqlite_db_filename).exists() {
-            if cache_settings.force_recreate {
-                fs::remove_file(&cache_settings.sqlite_db_filename)?;
+    pub fn create_cache(parse_results: &ParseResult, settings: &GutenbergCacheSettings, force_recreate: Option<bool>) -> Result<SQLiteCache, Error> {
+        let should_recreate = force_recreate.unwrap_or(false);
+
+        if Path::new(&settings.cache_filename).exists() {
+            if should_recreate {
+                fs::remove_file(&settings.cache_filename)?;
             }
             else {
-                let mut connection = Box::new(Connection::open(&cache_settings.sqlite_db_filename)?);
-                return Ok(SQLiteCache{connection, settings: cache_settings});
+                let connection = Box::new(Connection::open(&settings.cache_filename)?);
+                return Ok(SQLiteCache{connection});
             }
         }
-        let mut connection = Box::new(Connection::open(&cache_settings.sqlite_db_filename)?);
+        let mut connection = Box::new(Connection::open(&settings.cache_filename)?);
         let create_query = include_str!("gutenbergindex.db.sql");
         connection.execute_batch(create_query)?;
         connection.execute_batch("PRAGMA journal_mode = OFF;PRAGMA synchronous = 0;PRAGMA cache_size = 1000000;PRAGMA locking_mode = EXCLUSIVE;PRAGMA temp_store = MEMORY;")?;
@@ -199,7 +190,6 @@ impl SQLiteCache {
                         result,
                     )?;
                 }
-                Some(ParseType::Files) => {}
                 Some(ParseType::Publisher) => {
                     pb_fields.set_message("Fields publisher");
                     SQLiteCache::insert_many_fields(&mut connection, "publishers", "name", result)?;
@@ -208,9 +198,7 @@ impl SQLiteCache {
                     pb_fields.set_message("Fields rights");
                     SQLiteCache::insert_many_fields(&mut connection, "rights", "name", result)?;
                 }
-                Some(ParseType::DateIssued) => {}
-                Some(ParseType::Downloads) => {}
-                None => {}
+                _ => {}
             }
         }
         pb_fields.finish();
@@ -310,7 +298,7 @@ impl SQLiteCache {
 
         pb.finish();
 
-        Ok(SQLiteCache{connection, settings: cache_settings})
+        Ok(SQLiteCache{connection})
     }
 
     fn insert_links(
@@ -319,7 +307,7 @@ impl SQLiteCache {
         table_name: &str,
         link1_name: &str,
         link2_name: &str,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Error> {
         if links.is_empty() {
             return Ok(());
         }
@@ -341,7 +329,7 @@ impl SQLiteCache {
         table: &str,
         field: &str,
         field_dictionary: &IndexMap<String, DictionaryItemContent>,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Error> {
         if field_dictionary.is_empty() {
             return Ok(());
         }
@@ -362,7 +350,7 @@ impl SQLiteCache {
         field2: &str,
         field_dictionary: &IndexMap<String, DictionaryItemContent>,
         _book_id: usize,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Error> {
         if field_dictionary.is_empty() {
             return Ok(());
         }

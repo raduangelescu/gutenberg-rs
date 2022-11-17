@@ -1,17 +1,13 @@
 //
 // MARKERS ARE FROM https://github.com/c-w/Gutenberg/blob/master/gutenberg/_domain_model/text.py
-use std::collections::HashSet;
-use std::path::{Path, PathBuf};
-use futures_util::FutureExt;
-use reqwest::Client;
-use bytes::Bytes;
+use std::path::{Path};
 use std::fs::create_dir_all;
-use flate2::read::GzDecoder;
 use std::fs;
-use crate::settings::GutenbergCacheSettings;
-use crate::error::ParseError;
 use std::error::Error;
-use std::io::Read;
+use url::{Url, Position};
+use reqwest::Client;
+
+use crate::settings::GutenbergCacheSettings;
 
 const TEXT_START_MARKERS: &[&str] = &[
     "*END*THE SMALL PRINT",
@@ -101,17 +97,6 @@ const TEXT_END_MARKERS: &[&str] = &[
 const LEGALESE_START_MARKERS: &[&str] = &["<<THIS ELECTRONIC VERSION OF",];
 const LEGALESE_END_MARKERS: &[&str] = &["SERVICE THAT CHARGES FOR DOWNLOAD",];
 
-
-
-fn get_text_dir_from_index(index: i32) -> String {
-    let str_etextno = format!("{:02}", index);
-    let mut chars = str_etextno.chars();
-    chars.next_back();
-    let all_but_last_digit = chars.as_str().to_string();
-    let subdir = format!("{}/{}", all_but_last_digit, index);
-    subdir
-}
-
 async fn _download_content(link: &String) -> Result<String, Box<dyn Error>>  {
     let client = &Client::new();
     let request = client.get(link);
@@ -119,15 +104,14 @@ async fn _download_content(link: &String) -> Result<String, Box<dyn Error>>  {
     let string = content.unwrap().text().await.unwrap_or("none".to_string());
     Ok(string)
 }
-use url::{Url, Position};
 
-pub async fn get_text_by_id(settings: &GutenbergCacheSettings, link: &String, index: i32) -> Result<String, std::io::Error> {
+pub async fn get_text_by_id(settings: &GutenbergCacheSettings, link: &String) -> Result<String, std::io::Error> {
     println!("link {}", link);
     let the_url = &Url::parse(link).unwrap()[Position::AfterHost .. Position::AfterPath];
     let file_link = the_url.split_terminator("/").last().unwrap_or("");
 
-    let file_cache_location = Path::new(settings.TEXT_FILES_CACHE_FOLDER.as_str()).join(file_link);
-    let folder_path = Path::new(settings.TEXT_FILES_CACHE_FOLDER.as_str());
+    let file_cache_location = Path::new(settings.text_files_cache_folder.as_str()).join(file_link);
+    let folder_path = Path::new(settings.text_files_cache_folder.as_str());
 
     if !file_cache_location.exists() {
         if !folder_path.exists() {

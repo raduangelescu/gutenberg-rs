@@ -16,14 +16,14 @@ use crate::fst_parser_file_node::FSTParserFileNode;
 use crate::fst_parser_node::FSTParserNode;
 use crate::fst_parser_or_node::FSTParserOrNode;
 use crate::fst_parser_type::ParseType;
-use std::error::Error;
+use crate::error::Error;
 
 fn parse_rdf(
     path: &PathBuf,
     field_parsers: &mut Vec<Box<dyn FSTParser>>,
     book_id: usize,
     out: &mut ParseResult,
-) -> Result<usize, Box<dyn Error>> {
+) -> Result<usize, Error> {
     let mut reader = Reader::from_file(path)?;
     let mut buf = Vec::new();
     let mut gutenberg_book_id: usize = 0;
@@ -87,7 +87,7 @@ fn parse_rdf(
     return Ok(gutenberg_book_id);
 }
 
-pub fn parse_xml(folder_path: &PathBuf) -> Result<ParseResult, Box<dyn Error>> {
+pub fn parse_xml(folder_path: &String) -> Result<ParseResult, Error> {
     let paths = fs::read_dir(folder_path)?;
     let mut parse_result: ParseResult = ParseResult {
         books: Vec::new(),

@@ -1,8 +1,7 @@
 use crate::book::GutenbergFileEntry;
-use crate::error::ParseError;
+use crate::error::Error;
 use crate::fst_parser::{FSTParser, ParseItemResult, ParseResult};
 use crate::fst_parser_type::ParseType;
-use std::error::Error;
 
 use std::str;
 
@@ -20,7 +19,7 @@ impl FSTParser for FSTParserNode {
         text: &str,
         parse_result: &mut ParseResult,
         book_id: i32,
-    ) -> Result<(), Box<dyn Error>> {
+    ) -> Result<(), Error> {
         if !self.is_found() {
             return Ok(());
         }
@@ -81,12 +80,12 @@ impl FSTParser for FSTParserNode {
         self.parse_type
     }
 
-    fn get_result(&self) -> Result<&ParseItemResult, ParseError> {
+    fn get_result(&self) -> Result<&ParseItemResult, Error> {
         Ok(&self.result)
     }
 
-    fn get_files(&self) -> Result<Vec<GutenbergFileEntry>, ParseError> {
-        Err(ParseError::InvalidResult("no results".to_string()))
+    fn get_files(&self) -> Result<Vec<GutenbergFileEntry>, Error> {
+        Err(Error::InvalidResult("no results".to_string()))
     }
 }
 
