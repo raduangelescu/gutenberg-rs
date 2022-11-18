@@ -1,5 +1,4 @@
 use crate::error::Error;
-use num_traits::ToPrimitive;
 use serde_json::Value;
 use std::path::Path;
 

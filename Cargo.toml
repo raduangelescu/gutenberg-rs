@@ -3,6 +3,7 @@ name = "gutenberg-rs"
 version = "0.1.0"
 edition = "2021"
 
+homepage = "https://www.raduangelescu.com"
 documentation = "https://docs.rs/gutenberg-rs"
 repository = "https://github.com/raduangelescu/gutenberg-rs"
 
