@@ -321,15 +321,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
 
 [[package]]
-name = "fast-xml"
-version = "0.23.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f7ffc2f9e1373cd82b4d4ce2f84f8162edd48e3932abeb19c06170b66dbbd6c"
-dependencies = [
- "memchr",
-]
-
-[[package]]
 name = "fastrand"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -460,7 +451,6 @@ dependencies = [
  "bytes",
  "bzip2",
  "criterion",
- "fast-xml",
  "flate2",
  "futures-util",
  "indexmap",
@@ -468,6 +458,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "pretty_assertions",
+ "quick-xml",
  "reqwest",
  "rusqlite",
  "serde",
@@ -476,6 +467,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "url",
+ "walkdir",
 ]
 
 [[package]]
@@ -975,6 +967,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5ea3d908b0e36316caf9e9e2c4625cdde190a7e6f440d794667ed17a1855e725"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "quick-xml"
+version = "0.26.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f50b1c63b38611e7d4d7f68b82d3ad0cc71a2ad2e7f61fc10f1328d917c93cd"
+dependencies = [
+ "memchr",
 ]
 
 [[package]]

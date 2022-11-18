@@ -4,3 +4,5 @@ gutenberg.tar
 gutenberg.tar.bz2
 gutenberg-rs.db
 target/
+cache/
+text_cache/

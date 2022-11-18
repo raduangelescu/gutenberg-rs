@@ -7,7 +7,7 @@ use std::str;
 
 pub struct FSTParserNode {
     pub pos: i32,
-    pub states: Vec<String>,
+    pub states: Vec<&'static str>,
     pub result: ParseItemResult,
     pub has_result: bool,
     pub parse_type: ParseType,
@@ -47,7 +47,7 @@ impl FSTParser for FSTParserNode {
     }
 
     fn start_node(&mut self, node_name: &str) {
-        if self.pos == -1 && node_name.eq(&self.states[0]) {
+        if self.pos == -1 && node_name.eq(self.states[0]) {
             self.pos = 0;
             return;
         }
@@ -56,7 +56,7 @@ impl FSTParser for FSTParserNode {
             if check_index >= self.states.len() as i32 {
                 return;
             }
-            if node_name.eq(&self.states[check_index as usize]) {
+            if node_name.eq(self.states[check_index as usize]) {
                 self.pos += 1;
             }
         }
@@ -91,8 +91,7 @@ impl FSTParser for FSTParserNode {
 }
 
 impl FSTParserNode {
-    pub fn build(states_str: Vec<&str>, parse_type: ParseType) -> Box<dyn FSTParser> {
-        let states = states_str.iter().map(|&v| String::from(v)).collect();
+    pub fn build(states: Vec<&'static str>, parse_type: ParseType) -> Box<dyn FSTParser> {
         Box::new(FSTParserNode {
             pos: -1,
             states,

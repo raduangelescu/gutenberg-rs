@@ -19,7 +19,7 @@ futures-util = "0.3.25"
 tokio = { version = "1.13.0", features = ["full"] }
 bzip2 = "0.4.3"
 tar = "0.4.38"
-fast-xml ="0.23.1"
+quick-xml ="0.26.0"
 rusqlite = { version = "0.28.0", features = ["bundled"] }
 indexmap = "1.9.1"
 num-traits = "0.2"
@@ -30,6 +30,7 @@ serde_json = "1.0.87"
 flate2 = "1.0"
 bytes = "1.2.1" 
 url = "2.3.1"
+walkdir = "2.3.2"
 
 [dev-dependencies]
 criterion = "0.4"

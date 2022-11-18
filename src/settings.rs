@@ -8,7 +8,6 @@ pub struct GutenbergCacheSettings {
     pub cache_filename: String,
     pub cache_rdf_unpack_directory: String,
     pub cache_rdf_archive_name: String,
-    pub download_num_divs: i32,
     pub text_files_cache_folder: String,
     pub mongo_db_connection_server: String,
 }
@@ -26,7 +25,6 @@ impl Default for GutenbergCacheSettings {
                 .display()
                 .to_string(),
             cache_rdf_archive_name: "rdf-files.tar.bz2".to_string(),
-            download_num_divs: 20,
             mongo_db_connection_server: "mongodb://localhost:27017".to_string(),
         }
     }
@@ -54,21 +52,6 @@ impl GutenbergCacheSettings {
                 settings.cache_rdf_archive_name = v.to_string();
             } else {
                 return Err(Error::InvalidSettingsField("CacheArchiveName".to_string()));
-            }
-        }
-        if let Some(field) = json.get("ProgressBarMaxLength") {
-            if let Some(v) = field.as_i64() {
-                if let Some(vi32) = v.to_i32() {
-                    settings.download_num_divs = vi32;
-                } else {
-                    return Err(Error::InvalidSettingsField(
-                        "ProgressBarMaxLength".to_string(),
-                    ));
-                }
-            } else {
-                return Err(Error::InvalidSettingsField(
-                    "ProgressBarMaxLength".to_string(),
-                ));
             }
         }
         if let Some(field) = json.get("CacheRDFDownloadLink") {

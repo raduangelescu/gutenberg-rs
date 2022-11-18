@@ -8,8 +8,8 @@ use std::str;
 pub(crate) struct FSTParserFileNode {
     pos: i32,
     attribute_states_idx: i32,
-    states: Vec<String>,
-    attribute: String,
+    states: Vec<&'static str>,
+    attribute: &'static str,
     has_node: bool,
     parse_type: ParseType,
 
@@ -24,7 +24,7 @@ impl FSTParser for FSTParserFileNode {
         book_id: i32,
     ) -> Result<(), Error> {
         if !self.is_found() {
-            return Err(Error::InvalidRdf("No files".to_string()));
+            return Ok(());
         }
         self.has_node = true;
         let idx = parse_result.add_file_type(text.to_string(), book_id)?;
@@ -67,7 +67,7 @@ impl FSTParser for FSTParserFileNode {
     }
 
     fn start_node(&mut self, node_name: &str) {
-        if self.pos == -1 && node_name.eq(&self.states[0]) {
+        if self.pos == -1 && node_name.eq(self.states[0]) {
             self.pos = 0;
             return;
         }
@@ -77,7 +77,7 @@ impl FSTParser for FSTParserFileNode {
             if check_index >= self.states.len() as i32 {
                 return;
             }
-            if node_name.eq(&self.states[check_index as usize]) {
+            if node_name.eq(self.states[check_index as usize]) {
                 self.pos += 1;
             }
         }
@@ -114,16 +114,16 @@ impl FSTParser for FSTParserFileNode {
 
 impl FSTParserFileNode {
     pub fn build(
-        states_str: Vec<&str>,
-        attribute: &str,
+        states: Vec<&'static str>,
+        attribute: &'static str,
         parse_type: ParseType,
     ) -> Box<dyn FSTParser> {
         Box::new(FSTParserFileNode {
             pos: -1,
-            states: states_str.iter().map(|&v| String::from(v)).collect(),
+            states,
             has_node: false,
             parse_type,
-            attribute: attribute.to_string(),
+            attribute,
             attribute_states_idx: 1,
             files: Vec::new(),
         })

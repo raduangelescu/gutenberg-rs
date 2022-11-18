@@ -88,7 +88,7 @@ impl FSTParser for FSTParserOrNode {
 }
 
 impl FSTParserOrNode {
-    pub fn build(states_str: Vec<Vec<String>>, parse_type: ParseType) -> Box<dyn FSTParser> {
+    pub fn build(states_str: Vec<Vec<&'static str>>, parse_type: ParseType) -> Box<dyn FSTParser> {
         let mut nodes = Vec::new();
         for node_states in states_str {
             nodes.push(FSTParserNode {
