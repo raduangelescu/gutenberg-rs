@@ -30,6 +30,6 @@ pub async fn setup_sqlite(settings: &GutenbergCacheSettings) -> Result<(), Error
 
     let parse_result = xml_parser::parse_xml(&settings.cache_rdf_unpack_directory)?;
 
-    SQLiteCache::create_cache(&parse_result, settings, None)?;
+    SQLiteCache::create_cache(&parse_result, settings, false)?;
     Ok(())
 }

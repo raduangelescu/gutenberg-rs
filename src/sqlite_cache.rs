@@ -201,12 +201,11 @@ impl SQLiteCache {
     pub fn create_cache(
         parse_results: &ParseResult,
         settings: &GutenbergCacheSettings,
-        force_recreate: Option<bool>,
+        force_recreate: bool,
     ) -> Result<SQLiteCache, Error> {
-        let should_recreate = force_recreate.unwrap_or(false);
 
         if Path::new(&settings.cache_filename).exists() {
-            if should_recreate {
+            if force_recreate {
                 fs::remove_file(&settings.cache_filename)?;
             } else {
                 let connection = Box::new(Connection::open(&settings.cache_filename)?);

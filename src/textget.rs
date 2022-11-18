@@ -111,26 +111,28 @@ pub async fn get_text_by_id(
 ) -> Result<String, Error> {
     println!("link {}", link);
     let the_url = &Url::parse(link)?[Position::AfterHost..Position::AfterPath];
-    let file_link = the_url.split_terminator("/").last().unwrap_or("");
+    if let Some(file_link) = the_url.split_terminator("/").last() {
 
     let file_cache_location = Path::new(settings.text_files_cache_folder.as_str()).join(file_link);
     let folder_path = Path::new(settings.text_files_cache_folder.as_str());
 
     if !file_cache_location.exists() {
         if !folder_path.exists() {
-            create_dir_all(folder_path)?;
-        }
-        let content = _download_content(link).await.unwrap_or("none".to_string());
-        println!("writing file {}", file_cache_location.display());
-        fs::write(file_cache_location, &content).expect("Unable to write file");
-        return Ok(content);
-    } else {
-        let path = file_cache_location.display().to_string();
-        match fs::read_to_string(file_cache_location) {
-            Ok(data) => Ok(data),
-            Err(e) => Err(Error::InvalidCacheLocation(format!("could not read cache: {} (error:{})", path, e.to_string()).to_string())),
+                create_dir_all(folder_path)?;
+            }
+            let content_result = _download_content(link).await;
+            let content = content_result?;
+            fs::write(file_cache_location, &content).expect("Unable to write file");
+            return Ok(content);
+        } else {
+            let path = file_cache_location.display().to_string();
+            return match fs::read_to_string(file_cache_location) {
+                Ok(data) => Ok(data),
+                Err(e) => Err(Error::InvalidCacheLocation(format!("could not read cache: {} (error:{})", path, e.to_string()).to_string())),
+            };
         }
     }
+    Err(Error::InvalidCacheLocation(format!("Invalid url {}", the_url.to_string()).to_string()))
 }
 
 fn line_starts_with_any(line: &str, tokens: &[&str]) -> bool {
