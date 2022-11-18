@@ -6,6 +6,7 @@ edition = "2021"
 homepage = "https://www.raduangelescu.com"
 documentation = "https://docs.rs/gutenberg-rs"
 repository = "https://github.com/raduangelescu/gutenberg-rs"
+description = "This crate is used to get information and data from gutenberg (https://www.gutenberg.org/)"
 
 keywords = ["nlp", "gutenberg", "books", "textcache"]
 categories = ["parsing", "parser-implementations", "cache", "scraper"]
