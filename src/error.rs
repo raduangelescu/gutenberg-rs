@@ -19,6 +19,24 @@ pub enum Error {
     InvalidSQLITE(String),
     #[error("UTF8 error")]
     InvalidUTF8String(String),
+    #[error("Invalid Cache")]
+    InvalidCacheLocation(String),
+    #[error("Invalid URl")]
+    InvalidUrl(String),
+    #[error("Invalid Query")]
+    InvalidQuery(String)
+}
+
+impl std::convert::From<url::ParseError> for Error {
+    fn from(err: url::ParseError) -> Self {
+        Error::InvalidUrl(err.to_string())
+    }
+}
+
+impl std::convert::From<reqwest::Error> for Error {
+    fn from(err: reqwest::Error) -> Self {
+        Error::InvalidRequest(err.to_string())
+    }
 }
 
 impl std::convert::From<std::io::Error> for Error {

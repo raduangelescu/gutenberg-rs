@@ -98,7 +98,7 @@ pub trait FSTParser {
         attribute_value: &str,
         parse_result: &mut ParseResult,
         book_id: i32,
-    );
+    ) -> Result<(), Error>;
     fn end_node(&mut self, node_name: &str);
     fn is_found(&self) -> bool;
     fn has_results(&self) -> bool;

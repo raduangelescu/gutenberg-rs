@@ -42,7 +42,8 @@ impl FSTParser for FSTParserNode {
         _attribute_value: &str,
         _parse_result: &mut ParseResult,
         _book_id: i32,
-    ) {
+    ) -> Result<(), Error> {
+        Ok(())
     }
 
     fn start_node(&mut self, node_name: &str) {

@@ -26,11 +26,10 @@ pub async fn download_file(url: &str, path: &str) -> Result<(), Error> {
         file = std::fs::OpenOptions::new()
             .read(true)
             .append(true)
-            .open(path)
-            .unwrap();
+            .open(path)?;
 
-        let file_size = std::fs::metadata(path).unwrap().len();
-        file.seek(std::io::SeekFrom::Start(file_size)).unwrap();
+        let file_size = std::fs::metadata(path)?.len();
+        file.seek(std::io::SeekFrom::Start(file_size))?;
         downloaded = file_size;
     } else {
         file = File::create(path).or(Err(Error::InvalidRequest(format!(
@@ -40,8 +39,7 @@ pub async fn download_file(url: &str, path: &str) -> Result<(), Error> {
     }
 
     let pb = ProgressBar::new(total_size);
-    pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")
-    .unwrap()
+    pb.set_style(ProgressStyle::with_template("{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})")?
     .progress_chars("█  "));
 
     pb.set_message(format!("Downloading {} from {}", path, url));
@@ -70,7 +68,7 @@ pub fn decompress_tar_bz(path: &str) -> Result<(), Error> {
 
 pub fn decompress_bz(path: &str) -> Result<(u64, String), Error> {
     let bz_file = File::open(path)?;
-    let bz_size = bz_file.metadata().unwrap().len();
+    let bz_size = bz_file.metadata()?.len();
     let new_filename = &path[..path.len() - 3];
 
     let pb = ProgressBar::new(bz_size);
@@ -112,12 +110,13 @@ pub fn decompress_tar(path: &str, initial_size: u64) -> Result<(), Error> {
     ?.progress_chars("█  "));
 
     pb.set_message(format!("Unpacking to folder"));
-
-    archive.entries()?.for_each(|entry| {
-        let mut entry_value = entry.unwrap();
-        entry_value.unpack_in(".").err();
+    for entry in archive.entries()? 
+    {
+        let mut entry_value = entry?;
+        entry_value.unpack_in(".")?;
         pb.set_position(entry_value.raw_header_position() as u64);
-    });
+    }
+
     pb.finish();
     Ok(())
 }

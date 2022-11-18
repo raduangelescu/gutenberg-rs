@@ -28,11 +28,13 @@ impl Book {
     fn get_str(ids: &Vec<usize>, parse_type: ParseType, parse_result: &ParseResult) -> String {
         ids.iter()
             .map(|x| {
-                parse_result.field_dictionaries[parse_type as usize]
-                    .get_index(*x)
-                    .unwrap()
-                    .0
-                    .to_string()
+                let mut res = "".to_string();
+                if let Some(item) = parse_result
+                    .field_dictionaries[parse_type as usize]
+                    .get_index(*x) {
+                        res = item.0.to_string()
+                    }
+                res
             })
             .collect::<Vec<_>>()
             .join("|")
@@ -41,11 +43,13 @@ impl Book {
     #[allow(dead_code)]
     fn get_str_single(id: i32, parse_type: ParseType, parse_result: &ParseResult) -> String {
         if id >= 0 {
-            return parse_result.field_dictionaries[parse_type as usize]
-                .get_index(id as usize)
-                .unwrap()
-                .0
-                .to_string();
+            if let Some(item) = parse_result.field_dictionaries[parse_type as usize]
+                .get_index(id as usize) {
+                return item.0.to_string();
+            }
+            else {
+                return "".to_string();
+            }
         }
         "".to_string()
     }

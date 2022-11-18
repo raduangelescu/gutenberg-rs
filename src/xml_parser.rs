@@ -57,7 +57,7 @@ fn parse_rdf(
                         let a = attr?;
                         let value = str::from_utf8(a.value.borrow())?;
                         let key = str::from_utf8(a.key.borrow())?;
-                        check.attribute(&key, &value, out, book_id as i32);
+                        check.attribute(&key, &value, out, book_id as i32)?;
                     }
                 }
             }
@@ -232,30 +232,34 @@ pub fn parse_xml(folder_path: &String) -> Result<ParseResult, Error> {
                 })
                 .item_links
                 .clone();
+            let mut date_issued = "".to_string();
+            if let Some(dict_value) = parse_result.field_dictionaries
+                [ParseType::DateIssued as usize]
+                .get_index(date_id as usize)
+            {
+                date_issued = dict_value.0.to_string();
+            }
+
+            let mut num_downloads = 0;
+            if let Some(dict_value) = parse_result.field_dictionaries
+                [ParseType::DateIssued as usize]
+                .get_index(down_id as usize)
+            {
+                num_downloads = dict_value.0.parse::<i32>()?;
+            }
 
             parse_result.books.push(Book {
                 publisher_id,
                 title_id,
                 rights_id,
                 gutenberg_book_id,
-                date_issued: parse_result.field_dictionaries[ParseType::DateIssued as usize]
-                    .get_index(date_id as usize)
-                    .unwrap()
-                    .0
-                    .to_string(),
-                num_downloads: parse_result.field_dictionaries[ParseType::Downloads as usize]
-                    .get_index(down_id as usize)
-                    .unwrap()
-                    .0
-                    .parse::<i32>()?,
-
+                date_issued,
+                num_downloads,
                 language_ids,
                 subject_ids,
                 author_ids,
                 bookshelf_ids,
-                files: field_parsers[ParseType::Files as usize]
-                    .get_files()
-                    .unwrap(),
+                files: field_parsers[ParseType::Files as usize].get_files()?,
             });
             for parser in &mut field_parsers {
                 parser.reset();

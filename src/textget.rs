@@ -1,7 +1,7 @@
 //
 // MARKERS ARE FROM https://github.com/c-w/Gutenberg/blob/master/gutenberg/_domain_model/text.py
 use reqwest::Client;
-use std::error::Error;
+use crate::error::Error;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::Path;
@@ -97,20 +97,20 @@ const TEXT_END_MARKERS: &[&str] = &[
 const LEGALESE_START_MARKERS: &[&str] = &["<<THIS ELECTRONIC VERSION OF"];
 const LEGALESE_END_MARKERS: &[&str] = &["SERVICE THAT CHARGES FOR DOWNLOAD"];
 
-async fn _download_content(link: &String) -> Result<String, Box<dyn Error>> {
+async fn _download_content(link: &String) -> Result<String, Error> {
     let client = &Client::new();
     let request = client.get(link);
     let content = request.send().await;
-    let string = content.unwrap().text().await.unwrap_or("none".to_string());
-    Ok(string)
+    let content_result = content?.text().await?;
+    Ok(content_result)
 }
 
 pub async fn get_text_by_id(
     settings: &GutenbergCacheSettings,
     link: &String,
-) -> Result<String, std::io::Error> {
+) -> Result<String, Error> {
     println!("link {}", link);
-    let the_url = &Url::parse(link).unwrap()[Position::AfterHost..Position::AfterPath];
+    let the_url = &Url::parse(link)?[Position::AfterHost..Position::AfterPath];
     let file_link = the_url.split_terminator("/").last().unwrap_or("");
 
     let file_cache_location = Path::new(settings.text_files_cache_folder.as_str()).join(file_link);
@@ -125,7 +125,11 @@ pub async fn get_text_by_id(
         fs::write(file_cache_location, &content).expect("Unable to write file");
         return Ok(content);
     } else {
-        fs::read_to_string(file_cache_location)
+        let path = file_cache_location.display().to_string();
+        match fs::read_to_string(file_cache_location) {
+            Ok(data) => Ok(data),
+            Err(e) => Err(Error::InvalidCacheLocation(format!("could not read cache: {} (error:{})", path, e.to_string()).to_string())),
+        }
     }
 }
 

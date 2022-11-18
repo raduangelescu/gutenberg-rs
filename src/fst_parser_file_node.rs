@@ -24,12 +24,15 @@ impl FSTParser for FSTParserFileNode {
         book_id: i32,
     ) -> Result<(), Error> {
         if !self.is_found() {
-            return Ok(());
+            return Err(Error::InvalidRdf("No files".to_string()));
         }
         self.has_node = true;
         let idx = parse_result.add_file_type(text.to_string(), book_id)?;
-        self.files.last_mut().unwrap().file_type_id = (idx + 1) as i32;
-        Ok(())
+        if let Some(last_file) = self.files.last_mut() { 
+            last_file.file_type_id = (idx + 1) as i32;
+            return Ok(());
+        }
+        Err(Error::InvalidRdf("No files".to_string()))
     }
 
     fn reset(&mut self) {
@@ -44,20 +47,23 @@ impl FSTParser for FSTParserFileNode {
         attribute_value: &str,
         parse_result: &mut ParseResult,
         book_id: i32,
-    ) {
+    ) -> Result<(), Error> {
         if self.attribute_states_idx != self.pos {
-            return;
+            return Ok(());
         }
 
         if attribute_name != self.attribute {
-            return;
+            return Ok(());
         }
-
+        
         let value = attribute_value;
+        let file_link_id = parse_result.add_file(value.to_string(), book_id)?;
+   
         self.files.push(GutenbergFileEntry {
-            file_link_id: parse_result.add_file(value.to_string(), book_id).unwrap() as i32,
+            file_link_id: file_link_id as i32,
             file_type_id: -1,
         });
+        Ok(())
     }
 
     fn start_node(&mut self, node_name: &str) {

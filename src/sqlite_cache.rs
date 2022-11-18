@@ -37,81 +37,121 @@ impl DBCache for SQLiteCache {
     fn query(&mut self, json: &Value) -> Result<Vec<i32>, Error> {
         let mut helpers = Vec::new();
 
-        if let Some(field) = json.get("languages") {
-            helpers.push(HelperQuery {
-                tables: vec!["languages", "book_languages"],
-                query_struct: vec![
-                    "languages.id = book_languages.languageid AND books.id = book_languages.bookid",
-                    "languages.name",
-                    field.as_str().unwrap(),
-                ],
-            });
+        if let Some(field) = json.get("language") {
+            if let  Some(field_value)= field.as_str() {
+                helpers.push(HelperQuery {
+                    tables: vec!["languages", "book_languages"],
+                    query_struct: vec![
+                        "languages.id = book_languages.languageid AND books.id = book_languages.bookid",
+                        "languages.name",
+                        field_value,
+                    ],
+                });
+            }
+            else {
+                return Err(Error::InvalidQuery("language must be a string".to_string()));
+            }
         }
-        if let Some(field) = json.get("authors") {
-            helpers.push(HelperQuery {
-                tables: vec!["authors", "book_authors"],
-                query_struct: vec![
-                    "authors.id = book_authors.authorid and books.id = book_authors.bookid",
-                    "authors.name",
-                    field.as_str().unwrap(),
-                ],
-            });
+        if let Some(field) = json.get("author") {
+            if let  Some(field_value)= field.as_str() {
+                helpers.push(HelperQuery {
+                    tables: vec!["authors", "book_authors"],
+                    query_struct: vec![
+                        "authors.id = book_authors.authorid and books.id = book_authors.bookid",
+                        "authors.name",
+                        field_value,
+                    ],
+                });
+            }
+            else {
+                return Err(Error::InvalidQuery("author must be a string".to_string()));
+            }
         }
-        if let Some(field) = json.get("types") {
-            helpers.push(HelperQuery {
-                tables: vec!["types"],
-                query_struct: vec![
-                    "books.typeid = types.id",
-                    "types.name",
-                    field.as_str().unwrap(),
-                ],
-            });
+        if let Some(field) = json.get("type") {
+            if let  Some(field_value)= field.as_str() {
+                helpers.push(HelperQuery {
+                    tables: vec!["types"],
+                    query_struct: vec![
+                        "books.typeid = types.id",
+                        "types.name",
+                        field_value,
+                    ],
+                }); 
+            }
+            else {
+                return Err(Error::InvalidQuery("types must be a string".to_string()));
+            }
         }
-        if let Some(field) = json.get("types") {
-            helpers.push(HelperQuery {
-                tables: vec!["titles"],
-                query_struct: vec![
-                    "titles.bookid = books.id",
-                    "titles.name",
-                    field.as_str().unwrap(),
-                ],
-            });
+        if let Some(field) = json.get("title") {
+            if let  Some(field_value)= field.as_str() {
+                helpers.push(HelperQuery {
+                    tables: vec!["titles"],
+                    query_struct: vec![
+                        "titles.bookid = books.id",
+                        "titles.name",
+                        field_value,
+                    ],
+                });
+            }
+            else {
+                return Err(Error::InvalidQuery("title must a string".to_string()));
+            }
         }
-        if let Some(field) = json.get("subjects") {
-            helpers.push(HelperQuery {
-                tables: vec!["subjects", "book_subjects"],
-                query_struct: vec![
-                    "subjects.id = book_subjects.bookid and books.id = book_subjects.subjectid ",
-                    "subjects.name",
-                    field.as_str().unwrap(),
-                ],
-            });
+        if let Some(field) = json.get("subject") {
+            if let  Some(field_value)= field.as_str() {
+                helpers.push(HelperQuery {
+                    tables: vec!["subjects", "book_subjects"],
+                    query_struct: vec![
+                        "subjects.id = book_subjects.bookid and books.id = book_subjects.subjectid ",
+                        "subjects.name",
+                        field_value,
+                    ],
+                });
+            }
+            else {
+                return Err(Error::InvalidQuery("subject must a string".to_string()));
+            }
         }
-        if let Some(field) = json.get("publishers") {
-            helpers.push(HelperQuery {
-                tables: vec!["publishers"],
-                query_struct: vec![
-                    "publishers.id = books.publisherid",
-                    "publishers.name",
-                    field.as_str().unwrap(),
-                ],
-            });
+        if let Some(field) = json.get("publisher") {
+            if let  Some(field_value)= field.as_str() {
+                helpers.push(HelperQuery {
+                    tables: vec!["publishers"],
+                    query_struct: vec![
+                        "publishers.id = books.publisherid",
+                        "publishers.name",
+                        field_value,
+                    ],
+                });
+            }
+            else {
+                return Err(Error::InvalidQuery("publisher must a string".to_string()));
+            }
         }
-        if let Some(field) = json.get("publishers") {
-            helpers.push(HelperQuery {
-                tables: vec!["bookshelves"],
-                query_struct: vec![
-                    "bookshelves.id = books.bookshelveid",
-                    "bookshelves.name",
-                    field.as_str().unwrap(),
-                ],
-            });
+        if let Some(field) = json.get("bookshelve") {
+            if let  Some(field_value)= field.as_str() {
+                helpers.push(HelperQuery {
+                    tables: vec!["bookshelves"],
+                    query_struct: vec![
+                        "bookshelves.id = books.bookshelveid",
+                        "bookshelves.name",
+                        field_value,
+                    ],
+                });
+            }
+            else {
+                return Err(Error::InvalidQuery("bookshelve must a string".to_string()));
+            }
         }
-        if let Some(field) = json.get("publishers") {
-            helpers.push(HelperQuery{tables: vec!["downloadlinks", "downloadlinkstype"],
-                        query_struct: vec!["downloadlinks.downloadtypeid =  downloadlinkstype.id and downloadlinks.bookid = books.id",
-                        "downloadlinkstype.name",
-                        field.as_str().unwrap()]});
+        if let Some(field) = json.get("downloadlinkstype") {
+            if let  Some(field_value)= field.as_str() {
+                helpers.push(HelperQuery{tables: vec!["downloadlinks", "downloadlinkstype"],
+                            query_struct: vec!["downloadlinks.downloadtypeid =  downloadlinkstype.id and downloadlinks.bookid = books.id",
+                            "downloadlinkstype.name",
+                            field_value]});
+            }
+            else {
+                return Err(Error::InvalidQuery("downloadlinkstype must a string".to_string()));
+            }
         }
 
         let mut query = "SELECT DISTINCT books.gutenbergbookid FROM books".to_string();
@@ -310,11 +350,12 @@ impl SQLiteCache {
 
             let mut smt = connection.prepare(query.as_str())?;
             for item in book.files.iter() {
-                let file_link = parse_results
+                let mut file_link = "";
+                if let Some(file_link_item)= parse_results
                     .files_dictionary
-                    .get_index(item.file_link_id as usize)
-                    .unwrap()
-                    .0;
+                    .get_index(item.file_link_id as usize) {
+                        file_link = file_link_item.0;
+                }
                 smt.execute([
                     file_link,
                     item.file_type_id.to_string().as_str(),
