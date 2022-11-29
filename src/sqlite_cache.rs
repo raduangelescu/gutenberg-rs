@@ -130,9 +130,9 @@ impl DBCache for SQLiteCache {
         if let Some(field) = json.get("bookshelve") {
             if let  Some(field_value)= field.as_str() {
                 helpers.push(HelperQuery {
-                    tables: vec!["bookshelves"],
+                    tables: vec!["bookshelves, book_bookshelves"],
                     query_struct: vec![
-                        "bookshelves.id = books.bookshelveid",
+                        "bookshelves.id = book_bookshelves.bookshelfid AND books.id = book_bookshelves.bookid",
                         "bookshelves.name",
                         field_value,
                     ],

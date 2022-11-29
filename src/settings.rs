@@ -2,12 +2,19 @@ use crate::error::Error;
 use serde_json::Value;
 use std::path::Path;
 
+/// These are the essential settings for building your cache
 pub struct GutenbergCacheSettings {
+    /// This is the link used to download the rdf tar archive of rdfs from gutenberg
     pub cache_rdf_download_link: String,
+    /// This is the filename of the cache db
     pub cache_filename: String,
+    /// this is the directory used to unpack the rdf tar archive downloaded from gutenberg
     pub cache_rdf_unpack_directory: String,
+    /// this is the archive filename in which we download
     pub cache_rdf_archive_name: String,
+    /// this is the folder used to hold all the raw text data you download
     pub text_files_cache_folder: String,
+    /// this is not used right now (it will be used for mongodb support)
     pub mongo_db_connection_server: String,
 }
 

@@ -3,6 +3,9 @@
 gutenberg.tar
 gutenberg.tar.bz2
 gutenberg-rs.db
+big_file.txt
+rdf-files.tar
+rdf-files.tar.bz2
 target/
 cache/
 text_cache/

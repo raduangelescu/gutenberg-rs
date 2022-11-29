@@ -105,6 +105,7 @@ async fn _download_content(link: &String) -> Result<String, Error> {
     Ok(content_result)
 }
 
+/// This is used to download books via a link we get from our database, it will return the full string or an error
 pub async fn get_text_by_id(
     settings: &GutenbergCacheSettings,
     link: &String,
@@ -144,6 +145,7 @@ fn line_starts_with_any(line: &str, tokens: &[&str]) -> bool {
     return false;
 }
 
+/// This is a helper function that you can call on a downloaded book to strip it from the gutenberg headers
 pub fn strip_headers(text: String) -> String {
     #[cfg(windows)]
     const LINE_ENDING: &'static str = "\r\n";
