@@ -81,7 +81,7 @@ Standard query fields:
 
 If you want to do native queries, the sqlite table structure is presented in the image below:
 
-![image](https://github.com/raduangelescu/gutenbergpy/blob/master/schema.png?raw=true)
+![image](https://github.com/raduangelescu/gutenberg-rs/blob/master/schema.png?raw=true)
 
 As a quick cool example, we can use the library to get some english books of a particular category and see if we find a certain time in any of them (the beginings of a literary clock):
 
