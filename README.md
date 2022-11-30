@@ -34,20 +34,20 @@ let res = cache.query(&json!({
 The helper query function will return book ids which you can then use to get the text like this:
 ```rust
 use gutenberg_rs::sqlite_cache::SQLiteCache;
-use gutenberg_rs::text_get::get_text_by_id;
+use gutenberg_rs::text_get::get_text_from_link;
 ....
  for (idx, r) in res.iter().enumerate() {
         println!("getting text for gutenberg idx: {}", r);
         let links = cache.get_download_links(vec![*r])?;
         for link in links {
-            let res = get_text_by_id(&settings, &link).await.unwrap();
+            let res = get_text_from_link(&settings, &link).await.unwrap();
         }
 ```
 The above code will download the book text by id and cache it locally so the next time you need it it will be faster.
 You may also strip the headers of text using 
 ```rust
 ...
-let res = get_text_by_id(&settings, &link).await.unwrap();
+let res = get_text_from_link(&settings, &link).await.unwrap();
 let only_content = strip_headers(res)
 ```
 You may find more in the examples folder.
@@ -176,7 +176,7 @@ async fn exec() -> Result<(), Error> {
         println!("getting text for gutenberg idx: {}", r);
         let links = cache.get_download_links(vec![*r])?;
         for link in links {
-            let text = get_text_by_id(&settings, &link).await?;
+            let text = get_text_from_link(&settings, &link).await?;
             let stripped_text = strip_headers(text);
             big_string.push_str(&stripped_text);
             break;

@@ -1,4 +1,3 @@
-use crate::db_cache::DBCache;
 use crate::error::Error;
 use crate::fst_parser::DictionaryItemContent;
 use crate::fst_parser::ParseResult;
@@ -13,15 +12,15 @@ use std::fs;
 use std::path::Path;
 
 pub struct SQLiteCache {
-    connection: Box<Connection>,
+    pub connection: Box<Connection>,
 }
 struct HelperQuery<'a> {
     tables: Vec<&'a str>,
     query_struct: Vec<&'a str>,
 }
 
-impl DBCache for SQLiteCache {
-    fn get_download_links(&mut self, ids: Vec<i32>) -> Result<Vec<String>, Error> {
+impl SQLiteCache {
+    pub fn get_download_links(&mut self, ids: Vec<i32>) -> Result<Vec<String>, Error> {
         let ids_collect = ids.iter().map(|x| x.to_string()).collect::<Vec<String>>();
         let ids_str = ids_collect.join(",");
         let q = format!("SELECT downloadlinks.name FROM downloadlinks, books WHERE downloadlinks.bookid = books.id AND books.gutenbergbookid IN ({}) AND downloadlinks.downloadtypeid in (5, 6, 10,13,26,27,28,33,34,35,40,46,49,51)", ids_str);
@@ -34,7 +33,7 @@ impl DBCache for SQLiteCache {
         Ok(results)
     }
 
-    fn query(&mut self, json: &Value) -> Result<Vec<i32>, Error> {
+    pub fn query(&mut self, json: &Value) -> Result<Vec<i32>, Error> {
         let mut helpers = Vec::new();
 
         if let Some(field) = json.get("language") {
@@ -171,18 +170,13 @@ impl DBCache for SQLiteCache {
             }
             idx = idx + 1;
         }
-        let query_result = &self.native_query(&query)?;
-
-        Ok(query_result.clone())
-    }
-
-    fn native_query(&mut self, query: &str) -> Result<Vec<i32>, Error> {
-        let mut stmt = self.connection.prepare(query)?;
+        let mut stmt = self.connection.prepare(&query)?;
         let mut rows = stmt.query(())?;
         let mut results = Vec::new();
         while let Some(row) = rows.next()? {
             results.push(row.get(0)?);
         }
+
         Ok(results)
     }
 }

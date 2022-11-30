@@ -1,13 +1,13 @@
 use indexmap::IndexMap;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::borrow::Borrow;
-use std::str;
-use std::io::BufReader;
 use std::fs;
+use std::io::BufReader;
+use std::str;
 use walkdir::WalkDir;
 
-use quick_xml::reader::Reader;
 use quick_xml::events::Event;
+use quick_xml::reader::Reader;
 
 use crate::book::Book;
 use crate::error::Error;
@@ -27,22 +27,35 @@ pub trait XmlReader {
 }
 
 impl XmlReader for Reader<BufReader<std::fs::File>> {
-    fn trim(&mut self, val: bool) -> &mut Self { self.trim_text(val)}
-    fn read<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>> {self.read_event_into(buf)}
-    fn pos(&self) -> usize {self.buffer_position()}
+    fn trim(&mut self, val: bool) -> &mut Self {
+        self.trim_text(val)
+    }
+    fn read<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>> {
+        self.read_event_into(buf)
+    }
+    fn pos(&self) -> usize {
+        self.buffer_position()
+    }
 }
 
 impl XmlReader for Reader<&[u8]> {
-    fn trim(&mut self, val: bool) -> &mut Self { self.trim_text(val)}
-    fn read<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>> {self.read_event_into(buf)}
-    fn pos(&self) -> usize {self.buffer_position()}
+    fn trim(&mut self, val: bool) -> &mut Self {
+        self.trim_text(val)
+    }
+    fn read<'b>(&mut self, buf: &'b mut Vec<u8>) -> quick_xml::Result<Event<'b>> {
+        self.read_event_into(buf)
+    }
+    fn pos(&self) -> usize {
+        self.buffer_position()
+    }
 }
 
-pub fn parse_rdf_from_reader<R: XmlReader>(reader: &mut R,
+pub fn parse_rdf_from_reader<R: XmlReader>(
+    reader: &mut R,
     field_parsers: &mut Vec<Box<dyn FSTParser>>,
     book_id: usize,
-    out: &mut ParseResult
-)  -> Result<usize, Error>  {
+    out: &mut ParseResult,
+) -> Result<usize, Error> {
     let mut gutenberg_book_id: usize = 0;
     let mut buf = Vec::with_capacity(1024);
     loop {
@@ -63,17 +76,17 @@ pub fn parse_rdf_from_reader<R: XmlReader>(reader: &mut R,
                             let splits = str_book_id.split("/").collect::<Vec<&str>>();
                             assert!(splits.len() == 2);
                             match splits[1].parse::<usize>() {
-                                Ok(book_id) => { 
+                                Ok(book_id) => {
                                     gutenberg_book_id = book_id;
-                                },
+                                }
                                 Err(e) => {
                                     return Err(Error::InvalidRdf(
-                                    format!(
-                                        "parseIntError:{} , cannot parse bookid for {}",
-                                        e.to_string(),
-                                        book_id
-                                    )
-                                    .to_string(),
+                                        format!(
+                                            "parseIntError:{} , cannot parse bookid for {}",
+                                            e.to_string(),
+                                            book_id
+                                        )
+                                        .to_string(),
                                     ));
                                 }
                             }
@@ -102,11 +115,7 @@ pub fn parse_rdf_from_reader<R: XmlReader>(reader: &mut R,
 
             Ok(Event::Text(ref e)) => {
                 for check in field_parsers.iter_mut() {
-                    check.text(
-                        e.unescape()?.into_owned().as_str(),
-                        out,
-                        book_id as i32,
-                    )?;
+                    check.text(e.unescape()?.into_owned().as_str(), out, book_id as i32)?;
                 }
             }
 
@@ -127,10 +136,7 @@ fn setup_fst() -> (ParseResult, Vec<Box<dyn FSTParser>>) {
     };
     let field_parsers = vec![
         FSTParserOrNode::build(
-            vec![
-                vec!["dcterms:title"],
-                vec!["dcterms:alternative"],
-            ],
+            vec![vec!["dcterms:title"], vec!["dcterms:alternative"]],
             ParseType::Title,
         ),
         FSTParserNode::build(
@@ -143,16 +149,8 @@ fn setup_fst() -> (ParseResult, Vec<Box<dyn FSTParser>>) {
         ),
         FSTParserOrNode::build(
             vec![
-                vec![
-                    "dcterms:creator",
-                    "pgterms:agent",
-                    "pgterms:name",
-                ],
-                vec![
-                    "dcterms:creator",
-                    "pgterms:agent",
-                    "pgterms:agent",
-                ],
+                vec!["dcterms:creator", "pgterms:agent", "pgterms:name"],
+                vec!["dcterms:creator", "pgterms:agent", "pgterms:agent"],
             ],
             ParseType::Author,
         ),
@@ -189,28 +187,37 @@ fn get_files_from_directory(folder_path: &String) -> Result<Vec<String>, Error> 
         .follow_links(true)
         .into_iter()
         .filter_map(|e| e.ok())
-        .filter(|e| { match e.metadata() {
+        .filter(|e| match e.metadata() {
             Ok(e) => e.is_file(),
             _ => false,
-        }})
-        .map(|e| { e.path().display().to_string()})
+        })
+        .map(|e| e.path().display().to_string())
         .collect::<Vec<String>>();
     Ok(paths)
 }
 
-pub fn parse_rdfs_from_folder(folder: &String, display_progress_bar: bool) -> Result<ParseResult, Error> {
+pub fn parse_rdfs_from_folder(
+    folder: &String,
+    display_progress_bar: bool,
+) -> Result<ParseResult, Error> {
     let paths = get_files_from_directory(folder)?;
     parse_rdfs(&paths, false, display_progress_bar)
 }
 
-pub fn parse_rdfs_from_content(rdfs_content: &Vec<String>, display_progress_bar: bool) -> Result<ParseResult, Error> {
+pub fn parse_rdfs_from_content(
+    rdfs_content: &Vec<String>,
+    display_progress_bar: bool,
+) -> Result<ParseResult, Error> {
     parse_rdfs(&rdfs_content, true, display_progress_bar)
 }
 
-fn parse_rdfs(param: &Vec<String>, is_content: bool, display_progress_bar: bool) -> Result<ParseResult, Error> {
-    
-    let ( mut parse_result, mut field_parsers) = setup_fst();
-    
+fn parse_rdfs(
+    param: &Vec<String>,
+    is_content: bool,
+    display_progress_bar: bool,
+) -> Result<ParseResult, Error> {
+    let (mut parse_result, mut field_parsers) = setup_fst();
+
     let mut pb: Option<ProgressBar> = None;
     if display_progress_bar {
         let pb_new = ProgressBar::new(param.len() as u64);
@@ -226,7 +233,7 @@ fn parse_rdfs(param: &Vec<String>, is_content: bool, display_progress_bar: bool)
     let mut idx = 0;
     for file_path in param {
         idx = idx + 1;
-        
+
         match pb {
             Some(ref p) => p.set_position(idx as u64),
             _ => {}
@@ -236,21 +243,16 @@ fn parse_rdfs(param: &Vec<String>, is_content: bool, display_progress_bar: bool)
         let mut reader;
         let data;
         if is_content {
-            reader = Reader::from_str(file_path); 
-        }
-        else {
+            reader = Reader::from_str(file_path);
+        } else {
             data = fs::read_to_string(file_path)?;
             reader = Reader::from_str(data.as_str());
         }
-        
-        gutenberg_book_id = parse_rdf_from_reader(
-            &mut reader,
-            &mut field_parsers,
-            idx,
-            &mut parse_result,
-        )?;
-        
-         let publisher_id = match field_parsers[ParseType::Publisher as usize].get_result() {
+
+        gutenberg_book_id =
+            parse_rdf_from_reader(&mut reader, &mut field_parsers, idx, &mut parse_result)?;
+
+        let publisher_id = match field_parsers[ParseType::Publisher as usize].get_result() {
             Ok(item) => item.item_links[0] as i32,
             Err(_) => -1,
         };
@@ -307,24 +309,30 @@ fn parse_rdfs(param: &Vec<String>, is_content: bool, display_progress_bar: bool)
             .item_links
             .clone();
         let mut date_issued = "".to_string();
-        if let Some(dict_value) = parse_result.field_dictionaries
-            [ParseType::DateIssued as usize]
+        if let Some(dict_value) = parse_result.field_dictionaries[ParseType::DateIssued as usize]
             .get_index(date_id as usize)
         {
             date_issued = dict_value.0.to_string();
         }
 
         let mut num_downloads = 0;
-        if let Some(dict_value) = parse_result.field_dictionaries
-            [ParseType::Downloads as usize]
+        if let Some(dict_value) = parse_result.field_dictionaries[ParseType::Downloads as usize]
             .get_index(down_id as usize)
         {
             match dict_value.0.parse::<i32>() {
-                Ok(val) => { 
+                Ok(val) => {
                     num_downloads = val;
-                },
+                }
                 Err(e) => {
-                    return Err(Error::InvalidRdf(format!("bad num downloads parse for book {}, {}, {}",  gutenberg_book_id, e.to_string(), dict_value.0).to_string()));
+                    return Err(Error::InvalidRdf(
+                        format!(
+                            "bad num downloads parse for book {}, {}, {}",
+                            gutenberg_book_id,
+                            e.to_string(),
+                            dict_value.0
+                        )
+                        .to_string(),
+                    ));
                 }
             }
         }

@@ -1,4 +1,3 @@
-
 #![doc = include_str!("../README.md")]
 use crate::error::Error;
 use sqlite_cache::SQLiteCache;
@@ -14,14 +13,16 @@ mod fst_parser_or_node;
 mod fst_parser_type;
 mod utils;
 
-pub mod db_cache;
 pub mod error;
+pub mod rdf_parser;
 pub mod settings;
 pub mod sqlite_cache;
 pub mod text_get;
-pub mod rdf_parser;
 
-pub async fn setup_sqlite(settings: &GutenbergCacheSettings, force_regenerate: bool) -> Result<SQLiteCache, Error> {
+pub async fn setup_sqlite(
+    settings: &GutenbergCacheSettings,
+    force_regenerate: bool,
+) -> Result<SQLiteCache, Error> {
     let archive_exists = std::path::Path::new(&settings.cache_rdf_archive_name).exists();
     if !archive_exists || force_regenerate {
         if archive_exists {
@@ -33,7 +34,7 @@ pub async fn setup_sqlite(settings: &GutenbergCacheSettings, force_regenerate: b
         )
         .await?;
     }
-    
+
     let cache_folder_exists = std::path::Path::new(&settings.cache_rdf_unpack_directory).exists();
 
     if !cache_folder_exists || force_regenerate {
@@ -46,7 +47,8 @@ pub async fn setup_sqlite(settings: &GutenbergCacheSettings, force_regenerate: b
     match SQLiteCache::get_cache(settings) {
         Ok(cache) => Ok(cache),
         Err(_e) => {
-            let parse_result = rdf_parser::parse_rdfs_from_folder(&settings.cache_rdf_unpack_directory, true)?;
+            let parse_result =
+                rdf_parser::parse_rdfs_from_folder(&settings.cache_rdf_unpack_directory, true)?;
             SQLiteCache::create_cache(&parse_result, settings, false)
         }
     }

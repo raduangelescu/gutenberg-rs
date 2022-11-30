@@ -14,8 +14,6 @@ pub struct GutenbergCacheSettings {
     pub cache_rdf_archive_name: String,
     /// this is the folder used to hold all the raw text data you download
     pub text_files_cache_folder: String,
-    /// this is not used right now (it will be used for mongodb support)
-    pub mongo_db_connection_server: String,
 }
 
 impl Default for GutenbergCacheSettings {
@@ -31,7 +29,6 @@ impl Default for GutenbergCacheSettings {
                 .display()
                 .to_string(),
             cache_rdf_archive_name: "rdf-files.tar.bz2".to_string(),
-            mongo_db_connection_server: "mongodb://localhost:27017".to_string(),
         }
     }
 }
@@ -75,15 +72,6 @@ impl GutenbergCacheSettings {
             } else {
                 return Err(Error::InvalidSettingsField(
                     "TextFilesCacheFolder".to_string(),
-                ));
-            }
-        }
-        if let Some(field) = json.get("MongoDBCacheServer") {
-            if let Some(v) = field.as_str() {
-                settings.mongo_db_connection_server = v.to_string();
-            } else {
-                return Err(Error::InvalidSettingsField(
-                    "MongoDBCacheServer".to_string(),
                 ));
             }
         }

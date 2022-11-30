@@ -1,9 +1,8 @@
-use gutenberg_rs::db_cache::DBCache;
 use gutenberg_rs::error::Error;
 use gutenberg_rs::settings::GutenbergCacheSettings;
 use gutenberg_rs::setup_sqlite;
 use gutenberg_rs::sqlite_cache::SQLiteCache;
-use gutenberg_rs::text_get::{get_text_by_id, strip_headers};
+use gutenberg_rs::text_get::{get_text_from_link, strip_headers};
 use serde_json::json;
 use std::fs;
 
@@ -96,7 +95,7 @@ async fn exec() -> Result<(), Error> {
         println!("getting text for gutenberg idx: {}", r);
         let links = cache.get_download_links(vec![*r])?;
         for link in links {
-            let text = get_text_by_id(&settings, &link).await?;
+            let text = get_text_from_link(&settings, &link).await?;
             let stripped_text = strip_headers(text);
             big_string.push_str(&stripped_text);
             break;

@@ -1,7 +1,7 @@
 //
 // MARKERS ARE FROM https://github.com/c-w/Gutenberg/blob/master/gutenberg/_domain_model/text.py
-use reqwest::Client;
 use crate::error::Error;
+use reqwest::Client;
 use std::fs;
 use std::fs::create_dir_all;
 use std::path::Path;
@@ -106,19 +106,19 @@ async fn _download_content(link: &String) -> Result<String, Error> {
 }
 
 /// This is used to download books via a link we get from our database, it will return the full string or an error
-pub async fn get_text_by_id(
+pub async fn get_text_from_link(
     settings: &GutenbergCacheSettings,
     link: &String,
 ) -> Result<String, Error> {
     println!("link {}", link);
     let the_url = &Url::parse(link)?[Position::AfterHost..Position::AfterPath];
     if let Some(file_link) = the_url.split_terminator("/").last() {
+        let file_cache_location =
+            Path::new(settings.text_files_cache_folder.as_str()).join(file_link);
+        let folder_path = Path::new(settings.text_files_cache_folder.as_str());
 
-    let file_cache_location = Path::new(settings.text_files_cache_folder.as_str()).join(file_link);
-    let folder_path = Path::new(settings.text_files_cache_folder.as_str());
-
-    if !file_cache_location.exists() {
-        if !folder_path.exists() {
+        if !file_cache_location.exists() {
+            if !folder_path.exists() {
                 create_dir_all(folder_path)?;
             }
             let content_result = _download_content(link).await;
@@ -129,11 +129,15 @@ pub async fn get_text_by_id(
             let path = file_cache_location.display().to_string();
             return match fs::read_to_string(file_cache_location) {
                 Ok(data) => Ok(data),
-                Err(e) => Err(Error::InvalidCacheLocation(format!("could not read cache: {} (error:{})", path, e.to_string()).to_string())),
+                Err(e) => Err(Error::InvalidCacheLocation(
+                    format!("could not read cache: {} (error:{})", path, e.to_string()).to_string(),
+                )),
             };
         }
     }
-    Err(Error::InvalidCacheLocation(format!("Invalid url {}", the_url.to_string()).to_string()))
+    Err(Error::InvalidCacheLocation(
+        format!("Invalid url {}", the_url.to_string()).to_string(),
+    ))
 }
 
 fn line_starts_with_any(line: &str, tokens: &[&str]) -> bool {
