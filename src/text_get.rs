@@ -110,7 +110,6 @@ pub async fn get_text_from_link(
     settings: &GutenbergCacheSettings,
     link: &String,
 ) -> Result<String, Error> {
-    println!("link {}", link);
     let the_url = &Url::parse(link)?[Position::AfterHost..Position::AfterPath];
     if let Some(file_link) = the_url.split_terminator("/").last() {
         let file_cache_location =
