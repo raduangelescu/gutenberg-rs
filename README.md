@@ -7,7 +7,7 @@ It's target audience is people working in machine learning that need data for th
 
 The package:
 
--   Generates a local cache (of all gutenberg informations) that you can interogate to get book ids. The Local cache may be sqlite (default)
+-   Generates a local cache (of all gutenberg information) that you can interrogate to get book ids. The Local cache may be sqlite (default)
 -   Downloads and cleans raw text from gutenberg books
 
 The package has been tested with Rust 1.64.0 on both Windows and Linux It is faster and smaller than the python one.
@@ -20,7 +20,7 @@ Building the sqlite cache
 ------------------
 ``` rust
 let settings = GutenbergCacheSettings::default();
-setup_sqlite(&settings, false).await?;
+setup_sqlite(&settings, false, true).await?;
 ```
 This will use the default settings and build the cache (if it is not already built). It will download the archive from gutenberg, unpack, parse and store the info.
 After building the cache you may get it and query it via a helper function or native sqlite queries:
@@ -71,19 +71,21 @@ The rust version of this library is faster than the python one but the increase 
 Standard query fields:
 -   language
 -   author
--   type
 -   title
 -   subject
 -   publisher
 -   bookshelve
--   downloadtype
+-   rights
+-   downloadlinkstype
 
-
-If you want to do native queries, the sqlite table structure is presented in the image below:
+The above query fields are used when forming the json query that filters gutenberg book ids. 
+The query function only returns gutenberg book ids,
+if you want more you need to use native queries on the connection inside the cache. 
+This connection is using rusqlite and the sqlite table structure is presented in the image below:
 
 ![image](https://github.com/raduangelescu/gutenberg-rs/blob/master/schema.png?raw=true)
 
-As a quick cool example, we can use the library to get some english books of a particular category and see if we find a certain time in any of them (the beginings of a literary clock):
+As a quick cool example, we can use the library to get some english books of a particular category and see if we find a certain time in any of them (the beginnings of a literary clock):
 
 ```rust
 
@@ -155,7 +157,7 @@ async fn exec() -> Result<(), Error> {
     let settings = GutenbergCacheSettings::default();
 
     // generate the sqlite cache (this will download, parse and create the db)
-    setup_sqlite(&settings, false).await?;
+    setup_sqlite(&settings, false, true).await?;
 
     // we grab the newly create cache
     let mut cache = SQLiteCache::get_cache(&settings).unwrap();

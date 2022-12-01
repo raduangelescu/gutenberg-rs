@@ -6,6 +6,7 @@ static SAMPLE_2: &str = include_str!("../tests/documents/pg25.rdf");
 static SAMPLE_3: &str = include_str!("../tests/documents/pg732.rdf");
 static SAMPLE_4: &str = include_str!("../tests/documents/pg1000.rdf");
 static SAMPLE_5: &str = include_str!("../tests/documents/pg90907.rdf");
+static SAMPLE_6: &str = include_str!("../tests/documents/pg41418.rdf");
 
 /// Just parse - no decoding overhead
 pub fn bench_parse(c: &mut Criterion) {
@@ -15,6 +16,7 @@ pub fn bench_parse(c: &mut Criterion) {
         SAMPLE_3.to_string(),
         SAMPLE_4.to_string(),
         SAMPLE_5.to_string(),
+        SAMPLE_6.to_string(),
     ];
     c.bench_function("parse_rdfs_from_content", |b| {
         b.iter(|| parse_rdfs_from_content(&documents, false).unwrap())

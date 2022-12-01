@@ -14,11 +14,14 @@ pub struct GutenbergCacheSettings {
     pub cache_rdf_archive_name: String,
     /// this is the folder used to hold all the raw text data you download
     pub text_files_cache_folder: String,
+    /// this will make the cache in memory (it will not save it on disk), it is used in tests
+    pub db_in_memory: bool,
 }
 
 impl Default for GutenbergCacheSettings {
     fn default() -> GutenbergCacheSettings {
         GutenbergCacheSettings {
+            db_in_memory: false,
             text_files_cache_folder: "text_cache".to_string(),
             cache_rdf_download_link: "https://www.gutenberg.org/cache/epub/feeds/rdf-files.tar.bz2"
                 .to_string(),

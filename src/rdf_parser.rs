@@ -134,45 +134,35 @@ fn setup_fst() -> (ParseResult, Vec<Box<dyn FSTParser>>) {
         file_types_dictionary: IndexMap::<String, DictionaryItemContent>::with_capacity(1024),
         files_dictionary: IndexMap::<String, DictionaryItemContent>::with_capacity(1024),
     };
+    static TITLE_PATH: &str = "dcterms:title";
+    static TITLE_PATH_ALTERNATIVVE: &str = "dcterms:alternative";
+    static SUBJECT_PATH: &str = "dcterms:subject/rdf:Description/rdf:value";
+    static LANGUAGE_PATH: &str = "dcterms:language/rdf:Description/rdf:value";
+    static AUTHOR_PATH: &str = "dcterms:creator/pgterms:agent/pgterms:name";
+    static AUTHOR_PATH_ALTERNATIVE: &str = "dcterms:creator/pgterms:agent/pgterms:agent";
+    static BOOKSHELF_PATH: &str = "pgterms:bookshelf/rdf:Description/rdf:value";
+    static FILENODE_PATH: &str =
+        "dcterms:hasFormat/pgterms:file/dcterms:format/rdf:Description/rdf:value";
+    static FILENODE_ATTRIBUTE: &str = "rdf:about";
+    static PUBLISHER_PATH: &str = "dcterms:publisher";
+    static RIGHTS_PATH: &str = "dcterms:rights";
+    static DOWNLOADS_PATH: &str = "pgterms:downloads";
+    static ISSUED_PATH: &str = "dcterms:issued";
+
     let field_parsers = vec![
+        FSTParserOrNode::build(vec![TITLE_PATH, TITLE_PATH_ALTERNATIVVE], ParseType::Title),
+        FSTParserNode::build(SUBJECT_PATH, ParseType::Subject),
+        FSTParserNode::build(LANGUAGE_PATH, ParseType::Language),
         FSTParserOrNode::build(
-            vec![vec!["dcterms:title"], vec!["dcterms:alternative"]],
-            ParseType::Title,
-        ),
-        FSTParserNode::build(
-            vec!["dcterms:subject", "rdf:Description", "rdf:value"],
-            ParseType::Subject,
-        ),
-        FSTParserNode::build(
-            vec!["dcterms:language", "rdf:Description", "rdf:value"],
-            ParseType::Language,
-        ),
-        FSTParserOrNode::build(
-            vec![
-                vec!["dcterms:creator", "pgterms:agent", "pgterms:name"],
-                vec!["dcterms:creator", "pgterms:agent", "pgterms:agent"],
-            ],
+            vec![AUTHOR_PATH, AUTHOR_PATH_ALTERNATIVE],
             ParseType::Author,
         ),
-        FSTParserNode::build(
-            vec!["pgterms:bookshelf", "rdf:Description", "rdf:value"],
-            ParseType::Bookshelf,
-        ),
-        FSTParserFileNode::build(
-            vec![
-                "dcterms:hasFormat",
-                "pgterms:file",
-                "dcterms:format",
-                "rdf:Description",
-                "rdf:value",
-            ],
-            "rdf:about",
-            ParseType::Files,
-        ),
-        FSTParserNode::build(vec!["dcterms:publisher"], ParseType::Publisher),
-        FSTParserNode::build(vec!["dcterms:rights"], ParseType::Rights),
-        FSTParserNode::build(vec!["dcterms:issued"], ParseType::DateIssued),
-        FSTParserNode::build(vec!["pgterms:downloads"], ParseType::Downloads),
+        FSTParserNode::build(BOOKSHELF_PATH, ParseType::Bookshelf),
+        FSTParserFileNode::build(FILENODE_PATH, FILENODE_ATTRIBUTE, ParseType::Files),
+        FSTParserNode::build(PUBLISHER_PATH, ParseType::Publisher),
+        FSTParserNode::build(RIGHTS_PATH, ParseType::Rights),
+        FSTParserNode::build(ISSUED_PATH, ParseType::DateIssued),
+        FSTParserNode::build(DOWNLOADS_PATH, ParseType::Downloads),
     ];
 
     for _ in &field_parsers {
@@ -214,12 +204,12 @@ pub fn parse_rdfs_from_content(
 fn parse_rdfs(
     param: &Vec<String>,
     is_content: bool,
-    display_progress_bar: bool,
+    show_progress_bar: bool,
 ) -> Result<ParseResult, Error> {
     let (mut parse_result, mut field_parsers) = setup_fst();
 
     let mut pb: Option<ProgressBar> = None;
-    if display_progress_bar {
+    if show_progress_bar {
         let pb_new = ProgressBar::new(param.len() as u64);
         pb_new.set_style(
             ProgressStyle::with_template(
@@ -234,9 +224,8 @@ fn parse_rdfs(
     for file_path in param {
         idx = idx + 1;
 
-        match pb {
-            Some(ref p) => p.set_position(idx as u64),
-            _ => {}
+        if let Some(p) = &mut pb {
+            p.set_position(idx as u64);
         }
 
         let gutenberg_book_id;
@@ -253,7 +242,7 @@ fn parse_rdfs(
             parse_rdf_from_reader(&mut reader, &mut field_parsers, idx, &mut parse_result)?;
 
         let publisher_id = match field_parsers[ParseType::Publisher as usize].get_result() {
-            Ok(item) => item.item_links[0] as i32,
+            Ok(item) => item.item_links[0] as i32 + 1,
             Err(_) => -1,
         };
 
@@ -263,7 +252,7 @@ fn parse_rdfs(
         };
 
         let rights_id = match field_parsers[ParseType::Rights as usize].get_result() {
-            Ok(item) => item.item_links[0] as i32,
+            Ok(item) => item.item_links[0] as i32 + 1,
             Err(_) => -1,
         };
 
@@ -354,9 +343,9 @@ fn parse_rdfs(
             parser.reset();
         }
     }
-    match pb {
-        Some(ref p) => p.finish(),
-        _ => {}
+
+    if let Some(p) = pb {
+        p.finish();
     }
 
     Ok(parse_result)

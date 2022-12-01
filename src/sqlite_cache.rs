@@ -37,7 +37,7 @@ impl SQLiteCache {
         let mut helpers = Vec::new();
 
         if let Some(field) = json.get("language") {
-            if let  Some(field_value)= field.as_str() {
+            if let Some(field_value) = field.as_str() {
                 helpers.push(HelperQuery {
                     tables: vec!["languages", "book_languages"],
                     query_struct: vec![
@@ -46,13 +46,12 @@ impl SQLiteCache {
                         field_value,
                     ],
                 });
-            }
-            else {
+            } else {
                 return Err(Error::InvalidQuery("language must be a string".to_string()));
             }
         }
         if let Some(field) = json.get("author") {
-            if let  Some(field_value)= field.as_str() {
+            if let Some(field_value) = field.as_str() {
                 helpers.push(HelperQuery {
                     tables: vec!["authors", "book_authors"],
                     query_struct: vec![
@@ -61,43 +60,22 @@ impl SQLiteCache {
                         field_value,
                     ],
                 });
-            }
-            else {
+            } else {
                 return Err(Error::InvalidQuery("author must be a string".to_string()));
             }
         }
-        if let Some(field) = json.get("type") {
-            if let  Some(field_value)= field.as_str() {
-                helpers.push(HelperQuery {
-                    tables: vec!["types"],
-                    query_struct: vec![
-                        "books.typeid = types.id",
-                        "types.name",
-                        field_value,
-                    ],
-                }); 
-            }
-            else {
-                return Err(Error::InvalidQuery("types must be a string".to_string()));
-            }
-        }
         if let Some(field) = json.get("title") {
-            if let  Some(field_value)= field.as_str() {
+            if let Some(field_value) = field.as_str() {
                 helpers.push(HelperQuery {
                     tables: vec!["titles"],
-                    query_struct: vec![
-                        "titles.bookid = books.id",
-                        "titles.name",
-                        field_value,
-                    ],
+                    query_struct: vec!["titles.bookid = books.id", "titles.name", field_value],
                 });
-            }
-            else {
+            } else {
                 return Err(Error::InvalidQuery("title must a string".to_string()));
             }
         }
         if let Some(field) = json.get("subject") {
-            if let  Some(field_value)= field.as_str() {
+            if let Some(field_value) = field.as_str() {
                 helpers.push(HelperQuery {
                     tables: vec!["subjects", "book_subjects"],
                     query_struct: vec![
@@ -106,13 +84,12 @@ impl SQLiteCache {
                         field_value,
                     ],
                 });
-            }
-            else {
+            } else {
                 return Err(Error::InvalidQuery("subject must a string".to_string()));
             }
         }
         if let Some(field) = json.get("publisher") {
-            if let  Some(field_value)= field.as_str() {
+            if let Some(field_value) = field.as_str() {
                 helpers.push(HelperQuery {
                     tables: vec!["publishers"],
                     query_struct: vec![
@@ -121,13 +98,12 @@ impl SQLiteCache {
                         field_value,
                     ],
                 });
-            }
-            else {
+            } else {
                 return Err(Error::InvalidQuery("publisher must a string".to_string()));
             }
         }
         if let Some(field) = json.get("bookshelve") {
-            if let  Some(field_value)= field.as_str() {
+            if let Some(field_value) = field.as_str() {
                 helpers.push(HelperQuery {
                     tables: vec!["bookshelves, book_bookshelves"],
                     query_struct: vec![
@@ -136,20 +112,30 @@ impl SQLiteCache {
                         field_value,
                     ],
                 });
-            }
-            else {
+            } else {
                 return Err(Error::InvalidQuery("bookshelve must a string".to_string()));
             }
         }
+        if let Some(field) = json.get("rights") {
+            if let Some(field_value) = field.as_str() {
+                helpers.push(HelperQuery {
+                    tables: vec!["rights"],
+                    query_struct: vec!["rights.id = books.rightsid", "rights.name", field_value],
+                });
+            } else {
+                return Err(Error::InvalidQuery("rights must be a string".to_string()));
+            }
+        }
         if let Some(field) = json.get("downloadlinkstype") {
-            if let  Some(field_value)= field.as_str() {
+            if let Some(field_value) = field.as_str() {
                 helpers.push(HelperQuery{tables: vec!["downloadlinks", "downloadlinkstype"],
                             query_struct: vec!["downloadlinks.downloadtypeid =  downloadlinkstype.id and downloadlinks.bookid = books.id",
                             "downloadlinkstype.name",
                             field_value]});
-            }
-            else {
-                return Err(Error::InvalidQuery("downloadlinkstype must a string".to_string()));
+            } else {
+                return Err(Error::InvalidQuery(
+                    "downloadlinkstype must a string".to_string(),
+                ));
             }
         }
 
@@ -196,9 +182,9 @@ impl SQLiteCache {
         parse_results: &ParseResult,
         settings: &GutenbergCacheSettings,
         force_recreate: bool,
+        show_progress_bar: bool,
     ) -> Result<SQLiteCache, Error> {
-
-        if Path::new(&settings.cache_filename).exists() {
+        if Path::new(&settings.cache_filename).exists() && !settings.db_in_memory {
             if force_recreate {
                 fs::remove_file(&settings.cache_filename)?;
             } else {
@@ -206,26 +192,36 @@ impl SQLiteCache {
                 return Ok(SQLiteCache { connection });
             }
         }
-        let mut connection = Box::new(Connection::open(&settings.cache_filename)?);
+        let mut connection = match settings.db_in_memory {
+            false => Box::new(Connection::open(&settings.cache_filename)?),
+            true => Box::new(Connection::open(":memory:")?),
+        };
         let create_query = include_str!("gutenbergindex.db.sql");
         connection.execute_batch(create_query)?;
         connection.execute_batch("PRAGMA journal_mode = OFF;PRAGMA synchronous = 0;PRAGMA cache_size = 1000000;PRAGMA locking_mode = EXCLUSIVE;PRAGMA temp_store = MEMORY;")?;
+
         let mut book_id = 0;
-        let pb_fields = ProgressBar::new(parse_results.field_dictionaries.len() as u64);
-        pb_fields.set_style(
-            ProgressStyle::with_template(
-                "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})",
-            )?
-            .progress_chars("█  "),
-        );
+
+        let mut pb_fields: Option<ProgressBar> = None;
+        if show_progress_bar {
+            let pb = ProgressBar::new(parse_results.field_dictionaries.len() as u64);
+            pb.set_style(
+                ProgressStyle::with_template(
+                    "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})",
+                )?
+                .progress_chars("█  "),
+            );
+            pb_fields = Some(pb);
+        }
 
         for (idx, result) in parse_results.field_dictionaries.iter().enumerate() {
             book_id = book_id + 1;
-            pb_fields.set_position((idx + 1) as u64);
+            if let Some(pb) = &mut pb_fields {
+                pb.set_position((idx + 1) as u64);
+            }
 
             match FromPrimitive::from_usize(idx) {
                 Some(ParseType::Title) => {
-                    pb_fields.set_message("Fields titles");
                     SQLiteCache::insert_many_field_id(
                         &mut connection,
                         "titles",
@@ -236,19 +232,15 @@ impl SQLiteCache {
                     )?;
                 }
                 Some(ParseType::Subject) => {
-                    pb_fields.set_message("Fields subjects");
                     SQLiteCache::insert_many_fields(&mut connection, "subjects", "name", result)?;
                 }
                 Some(ParseType::Language) => {
-                    pb_fields.set_message("Fields language");
                     SQLiteCache::insert_many_fields(&mut connection, "languages", "name", result)?;
                 }
                 Some(ParseType::Author) => {
-                    pb_fields.set_message("Fields author");
                     SQLiteCache::insert_many_fields(&mut connection, "authors", "name", result)?;
                 }
                 Some(ParseType::Bookshelf) => {
-                    pb_fields.set_message("Fields bookshelf");
                     SQLiteCache::insert_many_fields(
                         &mut connection,
                         "bookshelves",
@@ -257,36 +249,41 @@ impl SQLiteCache {
                     )?;
                 }
                 Some(ParseType::Publisher) => {
-                    pb_fields.set_message("Fields publisher");
                     SQLiteCache::insert_many_fields(&mut connection, "publishers", "name", result)?;
                 }
                 Some(ParseType::Rights) => {
-                    pb_fields.set_message("Fields rights");
                     SQLiteCache::insert_many_fields(&mut connection, "rights", "name", result)?;
                 }
                 _ => {}
             }
         }
-        pb_fields.finish();
+        if let Some(pb) = pb_fields {
+            pb.finish();
+        }
         SQLiteCache::insert_many_fields(
             &mut connection,
             "downloadlinkstype",
             "name",
             &parse_results.file_types_dictionary,
         )?;
+        let mut pb_all: Option<ProgressBar> = None;
+        if show_progress_bar {
+            let pb = ProgressBar::new(parse_results.books.len() as u64);
+            pb.set_style(
+                ProgressStyle::with_template(
+                    "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})",
+                )?
+                .progress_chars("█  "),
+            );
 
-        let pb = ProgressBar::new(parse_results.books.len() as u64);
-        pb.set_style(
-            ProgressStyle::with_template(
-                "{msg}\n{spinner:.green} [{elapsed_precise}] [{wide_bar:.white/blue}] ({eta})",
-            )?
-            .progress_chars("█  "),
-        );
-
-        pb.set_message(format!("Building sqlite db"));
+            pb.set_message(format!("Building sqlite db"));
+            pb_all = Some(pb);
+        }
 
         for (idx, book) in parse_results.books.iter().enumerate() {
-            pb.set_position(idx as u64);
+            if let Some(pb) = &mut pb_all {
+                pb.set_position(idx as u64);
+            }
             let pairs_book_authors = book
                 .author_ids
                 .iter()
@@ -344,10 +341,11 @@ impl SQLiteCache {
             let mut smt = connection.prepare(query.as_str())?;
             for item in book.files.iter() {
                 let mut file_link = "";
-                if let Some(file_link_item)= parse_results
+                if let Some(file_link_item) = parse_results
                     .files_dictionary
-                    .get_index(item.file_link_id as usize) {
-                        file_link = file_link_item.0;
+                    .get_index(item.file_link_id as usize)
+                {
+                    file_link = file_link_item.0;
                 }
                 smt.execute([
                     file_link,
@@ -363,7 +361,9 @@ impl SQLiteCache {
         let create_query = include_str!("gutenbergindex_indices.db.sql");
         connection.execute_batch(create_query)?;
 
-        pb.finish();
+        if let Some(pb) = pb_all {
+            pb.finish();
+        }
 
         Ok(SQLiteCache { connection })
     }

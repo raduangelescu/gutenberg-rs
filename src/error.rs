@@ -24,7 +24,7 @@ pub enum Error {
     #[error("Invalid URl: `{0}`")]
     InvalidUrl(String),
     #[error("Invalid Query: `{0}`")]
-    InvalidQuery(String)
+    InvalidQuery(String),
 }
 
 impl std::convert::From<url::ParseError> for Error {

@@ -8,7 +8,7 @@ use std::str;
 pub(crate) struct FSTParserFileNode {
     pos: i32,
     attribute_states_idx: i32,
-    states: Vec<&'static str>,
+    states: Vec<String>,
     attribute: &'static str,
     has_node: bool,
     parse_type: ParseType,
@@ -28,7 +28,7 @@ impl FSTParser for FSTParserFileNode {
         }
         self.has_node = true;
         let idx = parse_result.add_file_type(text.to_string(), book_id)?;
-        if let Some(last_file) = self.files.last_mut() { 
+        if let Some(last_file) = self.files.last_mut() {
             last_file.file_type_id = (idx + 1) as i32;
             return Ok(());
         }
@@ -55,10 +55,10 @@ impl FSTParser for FSTParserFileNode {
         if attribute_name != self.attribute {
             return Ok(());
         }
-        
+
         let value = attribute_value;
         let file_link_id = parse_result.add_file(value.to_string(), book_id)?;
-   
+
         self.files.push(GutenbergFileEntry {
             file_link_id: file_link_id as i32,
             file_type_id: -1,
@@ -67,7 +67,7 @@ impl FSTParser for FSTParserFileNode {
     }
 
     fn start_node(&mut self, node_name: &str) {
-        if self.pos == -1 && node_name.eq(self.states[0]) {
+        if self.pos == -1 && node_name == self.states[0] {
             self.pos = 0;
             return;
         }
@@ -77,7 +77,7 @@ impl FSTParser for FSTParserFileNode {
             if check_index >= self.states.len() as i32 {
                 return;
             }
-            if node_name.eq(self.states[check_index as usize]) {
+            if node_name == self.states[check_index as usize] {
                 self.pos += 1;
             }
         }
@@ -85,7 +85,7 @@ impl FSTParser for FSTParserFileNode {
 
     fn end_node(&mut self, node_name: &str) {
         if self.pos > -1 {
-            if self.states[self.pos as usize].eq(node_name) {
+            if self.states[self.pos as usize] == node_name {
                 self.pos -= 1;
             }
         }
@@ -114,10 +114,11 @@ impl FSTParser for FSTParserFileNode {
 
 impl FSTParserFileNode {
     pub fn build(
-        states: Vec<&'static str>,
+        path: &'static str,
         attribute: &'static str,
         parse_type: ParseType,
     ) -> Box<dyn FSTParser> {
+        let states: Vec<String> = path.split("/").map(|s| String::from(s)).collect();
         Box::new(FSTParserFileNode {
             pos: -1,
             states,

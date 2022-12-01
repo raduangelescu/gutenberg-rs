@@ -41,10 +41,7 @@ CREATE TABLE "books" (
 	`publisherid` INTEGER,
 	`rightsid` INTEGER,
 	`numdownloads` INTEGER,
-	`languageid` INTEGER,
-	`bookshelveid` INTEGER,
-	`gutenbergbookid` INTEGER,
-	`typeid` INTEGER
+	`gutenbergbookid` INTEGER
 );
 CREATE TABLE `book_subjects` (
 	`bookid`	INTEGER,

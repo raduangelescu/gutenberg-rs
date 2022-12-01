@@ -74,7 +74,7 @@ async fn exec() -> Result<(), Error> {
     let settings = GutenbergCacheSettings::default();
 
     // generate the sqlite cache (this will download, parse and create the db)
-    setup_sqlite(&settings, false).await?;
+    setup_sqlite(&settings, false, true).await?;
 
     // we grab the newly create cache
     let mut cache = SQLiteCache::get_cache(&settings).unwrap();

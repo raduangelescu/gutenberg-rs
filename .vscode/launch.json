@@ -23,23 +23,16 @@
             "cwd": "${workspaceFolder}/target/debug"
         },
         {
-            "type": "lldb",
+            "name": "Run Test Debugger",
+            "type": "cppvsdbg",
             "request": "launch",
-            "name": "Debug unit tests in executable 'gutenberg-rs'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=testproject",
-                    "--package=testproject"
-                ],
-                "filter": {
-                    "name": "gutenberg-rs",
-                    "kind": "bin"
-                }
-            },
+            "program": "${workspaceFolder}/target/debug/deps/integration_tests-5e21093b991ccd30.exe",
             "args": [],
-            "cwd": "${workspaceFolder}/target/debug"
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "preLaunchTask": "cargo test build",
         }
     ]
 }
