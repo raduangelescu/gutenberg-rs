@@ -61,8 +61,3 @@ all-features = true
 # defines the configuration attribute `docs_rs` to enable feature requirements
 # See https://stackoverflow.com/questions/61417452
 rustdoc-args = ["--cfg", "docs_rs"]
-
-[[test]]
-name = "sanity"
-required-features = ["sanity"]
-path = "tests/sanity.rs"
